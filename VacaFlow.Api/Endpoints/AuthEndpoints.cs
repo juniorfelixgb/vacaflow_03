@@ -22,6 +22,11 @@ public static class AuthEndpoints
             .WithName("Login")
             .WithOpenApi()
             .AllowAnonymous();
+
+        group.MapPost("/logout", Logout)
+            .WithName("Logout")
+            .WithOpenApi()
+            .RequireAuthorization();
     }
 
     private static async Task<IResult> Register(
@@ -59,5 +64,11 @@ public static class AuthEndpoints
             authProperties);
 
         return Results.Ok(response);
+    }
+
+    private static async Task<IResult> Logout(HttpContext httpContext)
+    {
+        await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Results.Ok(new { message = "Logged out successfully" });
     }
 }
