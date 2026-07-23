@@ -9,9 +9,9 @@ export default defineConfig({
   reporter: [['html'], ['list']],
   use: {
     baseURL: 'http://localhost:3000',
-    trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    trace: 'on',
+    screenshot: 'on',
+    video: 'on',  // Always record video for demo
   },
 
   projects: [
