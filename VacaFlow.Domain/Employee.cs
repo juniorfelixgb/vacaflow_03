@@ -12,11 +12,12 @@ public class Employee
     public string Email { get; private set; } = null!;
     public string PasswordHash { get; private set; } = null!;
     public UserRole Role { get; private set; }
+    public Guid? AssignedManagerId { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
     private Employee() { }
 
-    public static Employee RegisterEmployee(string fullName, string email, string password)
+    public static Employee RegisterEmployee(string fullName, string email, string password, Guid? assignedManagerId = null)
     {
         if (string.IsNullOrWhiteSpace(fullName))
             throw new DomainException("Full name is required", "MISSING_FULL_NAME");
@@ -42,6 +43,7 @@ public class Employee
             Email = email.Trim().ToLowerInvariant(),
             PasswordHash = passwordHash,
             Role = UserRole.Employee,
+            AssignedManagerId = assignedManagerId,
             CreatedAt = DateTime.UtcNow
         };
     }

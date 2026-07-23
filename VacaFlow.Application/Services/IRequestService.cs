@@ -15,6 +15,10 @@ public interface IRequestService
 
     Task<IList<RequestDto>> GetSubmittedAsync(CancellationToken cancellationToken = default);
 
+    Task<IList<RequestDto>> GetSubmittedForManagerAsync(
+        Guid managerId,
+        CancellationToken cancellationToken = default);
+
     Task<RequestDto> UpdateAsync(
         Guid requestId,
         Guid employeeId,

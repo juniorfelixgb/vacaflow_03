@@ -157,9 +157,11 @@ public static class RequestEndpoints
 
     private static async Task<IResult> GetSubmitted(
         IRequestService requestService,
+        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var results = await requestService.GetSubmittedAsync(cancellationToken);
+        var managerId = GetUserId(httpContext);
+        var results = await requestService.GetSubmittedForManagerAsync(managerId, cancellationToken);
         return Results.Ok(results);
     }
 

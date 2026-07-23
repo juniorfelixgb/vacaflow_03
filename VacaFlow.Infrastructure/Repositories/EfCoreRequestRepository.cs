@@ -35,6 +35,20 @@ public class EfCoreRequestRepository : IRequestRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IList<AbsenceRequest>> GetSubmittedForManagerAsync(
+        Guid managerId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.AbsenceRequests
+            .AsNoTracking()
+            .Where(r => r.Status == RequestStatus.Submitted)
+            .Where(r => _context.Employees
+                .Where(e => e.Id == r.EmployeeId && e.AssignedManagerId == managerId)
+                .Any())
+            .OrderByDescending(r => r.SubmittedAt)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(AbsenceRequest request, CancellationToken cancellationToken = default)
     {
         await _context.AbsenceRequests.AddAsync(request, cancellationToken);

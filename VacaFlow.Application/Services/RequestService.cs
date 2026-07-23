@@ -8,10 +8,17 @@ using VacaFlow.Domain;
 public class RequestService : IRequestService
 {
     private readonly IRequestRepository _requestRepository;
+    private readonly ITransactionService _transactionService;
+    private readonly IApprovalRepository _approvalRepository;
 
-    public RequestService(IRequestRepository requestRepository)
+    public RequestService(
+        IRequestRepository requestRepository,
+        ITransactionService transactionService,
+        IApprovalRepository approvalRepository)
     {
         _requestRepository = requestRepository ?? throw new ArgumentNullException(nameof(requestRepository));
+        _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
+        _approvalRepository = approvalRepository ?? throw new ArgumentNullException(nameof(approvalRepository));
     }
 
     public async Task<RequestDto> CreateAsync(
@@ -51,6 +58,14 @@ public class RequestService : IRequestService
     public async Task<IList<RequestDto>> GetSubmittedAsync(CancellationToken cancellationToken = default)
     {
         var requests = await _requestRepository.GetSubmittedAsync(cancellationToken);
+        return requests.Select(MapToDto).ToList();
+    }
+
+    public async Task<IList<RequestDto>> GetSubmittedForManagerAsync(
+        Guid managerId,
+        CancellationToken cancellationToken = default)
+    {
+        var requests = await _requestRepository.GetSubmittedForManagerAsync(managerId, cancellationToken);
         return requests.Select(MapToDto).ToList();
     }
 
@@ -102,14 +117,23 @@ public class RequestService : IRequestService
         ApproveRequestRequest request,
         CancellationToken cancellationToken = default)
     {
-        var absenceRequest = await _requestRepository.GetByIdAsync(requestId, cancellationToken);
-        if (absenceRequest == null)
-            throw new ValidationException("Request not found", "REQUEST_NOT_FOUND");
+        var result = await _transactionService.ExecuteInTransactionAsync(async () =>
+        {
+            var absenceRequest = await _requestRepository.GetByIdAsync(requestId, cancellationToken);
+            if (absenceRequest == null)
+                throw new ValidationException("Request not found", "REQUEST_NOT_FOUND");
 
-        absenceRequest.Approve(approverId, request.Comment);
+            absenceRequest.Approve(approverId, request.Comment);
 
-        await _requestRepository.SaveChangesAsync(cancellationToken);
-        return MapToDto(absenceRequest);
+            var approvalRecord = ApprovalRecord.CreateApproval(requestId, approverId, request.Comment);
+            await _approvalRepository.AddAsync(approvalRecord, cancellationToken);
+
+            await _requestRepository.SaveChangesAsync(cancellationToken);
+
+            return MapToDto(absenceRequest);
+        }, cancellationToken);
+
+        return result;
     }
 
     public async Task<RequestDto> RejectAsync(
@@ -118,14 +142,23 @@ public class RequestService : IRequestService
         ApproveRequestRequest request,
         CancellationToken cancellationToken = default)
     {
-        var absenceRequest = await _requestRepository.GetByIdAsync(requestId, cancellationToken);
-        if (absenceRequest == null)
-            throw new ValidationException("Request not found", "REQUEST_NOT_FOUND");
+        var result = await _transactionService.ExecuteInTransactionAsync(async () =>
+        {
+            var absenceRequest = await _requestRepository.GetByIdAsync(requestId, cancellationToken);
+            if (absenceRequest == null)
+                throw new ValidationException("Request not found", "REQUEST_NOT_FOUND");
 
-        absenceRequest.Reject(approverId, request.Comment);
+            absenceRequest.Reject(approverId, request.Comment);
 
-        await _requestRepository.SaveChangesAsync(cancellationToken);
-        return MapToDto(absenceRequest);
+            var approvalRecord = ApprovalRecord.CreateRejection(requestId, approverId, request.Comment);
+            await _approvalRepository.AddAsync(approvalRecord, cancellationToken);
+
+            await _requestRepository.SaveChangesAsync(cancellationToken);
+
+            return MapToDto(absenceRequest);
+        }, cancellationToken);
+
+        return result;
     }
 
     public async Task<RequestDto> CancelAsync(

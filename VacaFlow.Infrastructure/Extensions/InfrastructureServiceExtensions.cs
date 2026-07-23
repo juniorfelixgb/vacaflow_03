@@ -7,6 +7,7 @@ using VacaFlow.Application.Services;
 using VacaFlow.Infrastructure.Persistence;
 using VacaFlow.Infrastructure.Repositories;
 using VacaFlow.Infrastructure.Seeders;
+using VacaFlow.Infrastructure.Services;
 
 public static class InfrastructureServiceExtensions
 {
@@ -20,9 +21,11 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IUserRepository, EfCoreUserRepository>();
         services.AddScoped<IAbsenceTypeRepository, EfCoreAbsenceTypeRepository>();
         services.AddScoped<IRequestRepository, EfCoreRequestRepository>();
+        services.AddScoped<IApprovalRepository, EfCoreApprovalRepository>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAbsenceTypeService, AbsenceTypeService>();
         services.AddScoped<IRequestService, RequestService>();
+        services.AddScoped<ITransactionService, EfCoreTransactionService>();
 
         return services;
     }
