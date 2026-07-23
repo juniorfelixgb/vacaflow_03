@@ -12,7 +12,7 @@ import TextArea from '@/components/forms/TextArea';
 import StatusPill from '@/components/ui/StatusPill';
 import { requestApi, absenceTypeApi } from '@/lib/api';
 import { Request, AbsenceType } from '@/lib/types';
-import { formatDate, calculateWorkingDays } from '@/lib/utils';
+import { formatDate, formatDateTime, calculateWorkingDays } from '@/lib/utils';
 import { isDraft, isSubmitted } from '@/lib/statusMapping';
 
 interface EditData {
@@ -258,14 +258,14 @@ export default function RequestDetailPage() {
               <TimelineStep
                 stepNumber={1}
                 title="Created as draft"
-                timestamp={`${formatDate(request.createdAt)} · 10:24`}
+                timestamp={formatDateTime(request.createdAt)}
                 isCompleted={true}
               />
 
               <TimelineStep
                 stepNumber={2}
                 title="Submitted for approval"
-                timestamp={request.submittedAt ? formatDate(request.submittedAt) : undefined}
+                timestamp={request.submittedAt ? formatDateTime(request.submittedAt) : undefined}
                 isCompleted={!isDraftStatus}
                 isPending={isDraftStatus}
               />
@@ -273,7 +273,7 @@ export default function RequestDetailPage() {
               <TimelineStep
                 stepNumber={3}
                 title="Manager decision"
-                timestamp={request.reviewedAt ? formatDate(request.reviewedAt) : undefined}
+                timestamp={request.reviewedAt ? formatDateTime(request.reviewedAt) : undefined}
                 isCompleted={isFinalStatus}
                 isPending={false}
                 isLastStep={true}
@@ -283,9 +283,9 @@ export default function RequestDetailPage() {
 
           {/* Reviewer Box */}
           <ReviewerBox
-            initials="JP"
-            name="James Parker"
-            title="Your manager"
+            name={request.approverName ?? request.assignedManagerName}
+            role={request.approverName ? 'Reviewed this request' : 'Your manager'}
+            emptyLabel="Pending manager assignment"
           />
         </div>
       </div>

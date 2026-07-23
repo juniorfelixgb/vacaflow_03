@@ -9,6 +9,16 @@ import { Request, AbsenceType } from '@/lib/types';
 import { formatDate, formatDateRange, calculateWorkingDays } from '@/lib/utils';
 import { getAbsenceTypeEmoji, getAbsenceTypeName } from '@/lib/absenceTypeMapping';
 
+function initialsFrom(name?: string): string {
+  if (!name) return '—';
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 export default function ManagerQueuePage() {
   const [requests, setRequests] = useState<Request[]>([]);
   const [absenceTypes, setAbsenceTypes] = useState<AbsenceType[]>([]);
@@ -94,11 +104,11 @@ export default function ManagerQueuePage() {
         <div className="bg-bg-surface rounded-card border border-border-warm overflow-hidden">
           <div
             className="grid gap-6 px-6 py-3.5 bg-[#FBF8F4] border-b border-border-hairline text-label uppercase text-text-faint"
-            style={{ gridTemplateColumns: '1.5fr 1.4fr 1.6fr 1.1fr 0.7fr' }}
+            style={{ gridTemplateColumns: '1.4fr 1.3fr 1.5fr 1fr 0.7fr' }}
           >
+            <div>Employee</div>
             <div>Type</div>
             <div>Dates</div>
-            <div>Reason</div>
             <div>Submitted</div>
             <div className="text-right">Action</div>
           </div>
@@ -111,11 +121,26 @@ export default function ManagerQueuePage() {
                   key={request.id}
                   href={`/manager/review/${request.id}`}
                   className="grid gap-6 px-6 py-4 items-center border-b border-border-hairline last:border-b-0 hover:bg-bg-warm-tint transition"
-                  style={{ gridTemplateColumns: '1.5fr 1.4fr 1.6fr 1.1fr 0.7fr' }}
+                  style={{ gridTemplateColumns: '1.4fr 1.3fr 1.5fr 1fr 0.7fr' }}
                 >
-                  {/* Type */}
+                  {/* Employee */}
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-9 h-9 rounded-[10px] bg-bg-orange-tint flex items-center justify-center text-base flex-shrink-0">
+                    <span className="w-9 h-9 rounded-avatar-sm bg-bg-orange-tint text-brand-orange flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {initialsFrom(request.employeeName)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-text-primary truncate">
+                        {request.employeeName ?? 'Unknown'}
+                      </p>
+                      {request.employeeEmail && (
+                        <p className="text-xs text-text-faint truncate">{request.employeeEmail}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Type */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-base flex-shrink-0">
                       {absenceType ? getAbsenceTypeEmoji(absenceType.code) : '📝'}
                     </span>
                     <p className="text-sm font-bold text-text-primary truncate">
@@ -132,9 +157,6 @@ export default function ManagerQueuePage() {
                       {calculateWorkingDays(request.startDate, request.endDate)} working days
                     </p>
                   </div>
-
-                  {/* Reason */}
-                  <p className="text-sm text-text-muted truncate">{request.reason}</p>
 
                   {/* Submitted */}
                   <p className="text-xs text-text-muted">

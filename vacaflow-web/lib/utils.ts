@@ -23,6 +23,27 @@ export function formatDate(dateString: string): string {
   return formatter.format(date);
 }
 
+/**
+ * Format a full ISO timestamp (e.g. createdAt/submittedAt) as "Aug 24, 2026 · 09:12"
+ * in the viewer's local timezone. Returns an em dash for missing values.
+ */
+export function formatDateTime(dateString?: string): string {
+  if (!dateString) return '—';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '—';
+  const datePart = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+  return `${datePart} · ${timePart}`;
+}
+
 export function getDayOfWeek(dateString: string): string {
   const date = parseLocalDate(dateString);
   const formatter = new Intl.DateTimeFormat('en-US', {

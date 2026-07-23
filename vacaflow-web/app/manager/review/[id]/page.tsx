@@ -6,15 +6,18 @@ import AppLayout from '@/components/layout/AppLayout';
 import ActionButton from '@/components/ui/ActionButton';
 import TextArea from '@/components/forms/TextArea';
 import ReviewerBox from '@/components/ui/ReviewerBox';
-import { requestApi, absenceTypeApi, userApi } from '@/lib/api';
-import { Request, AbsenceType, User } from '@/lib/types';
-import { formatDate, calculateWorkingDays } from '@/lib/utils';
+import { requestApi, absenceTypeApi } from '@/lib/api';
+import { Request, AbsenceType } from '@/lib/types';
+import { formatDate, formatDateTime, calculateWorkingDays } from '@/lib/utils';
 import { getAbsenceTypeEmoji, getAbsenceTypeName, formatAbsenceTypeWithCode } from '@/lib/absenceTypeMapping';
 
-interface EmployeeInfo {
-  name: string;
-  department: string;
-  initials: string;
+function initialsFrom(name: string): string {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 export default function ManagerReviewPage() {
@@ -22,8 +25,6 @@ export default function ManagerReviewPage() {
   const { id } = useParams();
   const [request, setRequest] = useState<Request | null>(null);
   const [absenceType, setAbsenceType] = useState<AbsenceType | undefined>(undefined);
-  const [employee, setEmployee] = useState<EmployeeInfo | null>(null);
-  const [manager, setManager] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [comment, setComment] = useState('');
@@ -32,24 +33,15 @@ export default function ManagerReviewPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [req, types, mgr] = await Promise.all([
+        const [req, types] = await Promise.all([
           requestApi.getById(id as string),
           absenceTypeApi.getAll(),
-          userApi.getCurrentUser(),
         ]);
 
         setRequest(req);
-        setManager(mgr);
 
         const type = types.find((t) => t.id === req.absenceTypeId);
         setAbsenceType(type);
-
-        // Mock employee data - in a real app, this would come from the API
-        setEmployee({
-          name: 'Alex Morgan',
-          department: 'Design Team',
-          initials: 'AM',
-        });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load request');
       } finally {
@@ -98,7 +90,7 @@ export default function ManagerReviewPage() {
     );
   }
 
-  if (!request || !employee) {
+  if (!request) {
     return (
       <AppLayout backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
         <p className="text-status-rejected-text">Request not found</p>
@@ -107,6 +99,8 @@ export default function ManagerReviewPage() {
   }
 
   const workingDays = calculateWorkingDays(request.startDate, request.endDate);
+  const employeeName = request.employeeName ?? 'Unknown employee';
+  const employeeInitials = initialsFrom(employeeName);
 
   return (
     <AppLayout backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
@@ -116,11 +110,13 @@ export default function ManagerReviewPage() {
           {/* Employee Header */}
           <div className="flex items-start gap-3 mb-6 pb-6 border-b border-border-hairline">
             <div className="w-[52px] h-[52px] bg-bg-orange-tint rounded-avatar-md flex items-center justify-center font-bold text-sm text-brand-orange flex-shrink-0">
-              {employee.initials}
+              {employeeInitials}
             </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-sm text-text-primary">{employee.name}</h3>
-              <p className="text-xs text-text-muted">{employee.department} · Employee</p>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-sm text-text-primary truncate">{employeeName}</h3>
+              <p className="text-xs text-text-muted truncate">
+                {request.employeeEmail ?? 'Employee'}
+              </p>
             </div>
           </div>
 
@@ -155,7 +151,7 @@ export default function ManagerReviewPage() {
 
           {/* Submitted Timestamp */}
           <p className="text-xs text-text-muted">
-            Submitted {request.submittedAt ? formatDate(request.submittedAt) : 'pending'} · 09:12
+            Submitted {request.submittedAt ? formatDateTime(request.submittedAt) : 'pending'}
           </p>
         </div>
 

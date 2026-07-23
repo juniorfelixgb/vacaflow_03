@@ -22,7 +22,10 @@ public class AuthService : IAuthService
         if (emailExists)
             throw new ValidationException("This email is already registered", "EMAIL_ALREADY_IN_USE");
 
-        var employee = Employee.RegisterEmployee(request.FullName, request.Email, request.Password);
+        // Assign the default manager so submitted requests reach a review queue.
+        var defaultManager = await _userRepository.GetDefaultManagerAsync(cancellationToken);
+        var employee = Employee.RegisterEmployee(
+            request.FullName, request.Email, request.Password, defaultManager?.Id);
 
         await _userRepository.AddAsync(employee, cancellationToken);
         await _userRepository.SaveChangesAsync(cancellationToken);

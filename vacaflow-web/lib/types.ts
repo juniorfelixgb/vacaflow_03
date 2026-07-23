@@ -16,7 +16,11 @@ export interface Request {
   endDate: string;
   reason: string;
   status: RequestStatus;
+  employeeName?: string;
+  employeeEmail?: string;
   approverId?: string;
+  approverName?: string;
+  assignedManagerName?: string;
   approvalComment?: string;
   createdAt: string;
   submittedAt?: string;

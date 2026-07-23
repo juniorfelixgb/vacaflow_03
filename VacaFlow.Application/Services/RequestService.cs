@@ -10,15 +10,18 @@ public class RequestService : IRequestService
     private readonly IRequestRepository _requestRepository;
     private readonly ITransactionService _transactionService;
     private readonly IApprovalRepository _approvalRepository;
+    private readonly IUserRepository _userRepository;
 
     public RequestService(
         IRequestRepository requestRepository,
         ITransactionService transactionService,
-        IApprovalRepository approvalRepository)
+        IApprovalRepository approvalRepository,
+        IUserRepository userRepository)
     {
         _requestRepository = requestRepository ?? throw new ArgumentNullException(nameof(requestRepository));
         _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
         _approvalRepository = approvalRepository ?? throw new ArgumentNullException(nameof(approvalRepository));
+        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
     }
 
     public async Task<RequestDto> CreateAsync(
@@ -46,7 +49,7 @@ public class RequestService : IRequestService
         if (request == null)
             throw new ValidationException("Request not found", "REQUEST_NOT_FOUND");
 
-        return MapToDto(request);
+        return await MapToDtoEnrichedAsync(request, cancellationToken);
     }
 
     public async Task<IList<RequestDto>> GetByEmployeeIdAsync(Guid employeeId, CancellationToken cancellationToken = default)
@@ -66,7 +69,19 @@ public class RequestService : IRequestService
         CancellationToken cancellationToken = default)
     {
         var requests = await _requestRepository.GetSubmittedForManagerAsync(managerId, cancellationToken);
-        return requests.Select(MapToDto).ToList();
+        var employees = await _userRepository.GetByIdsAsync(
+            requests.Select(r => r.EmployeeId), cancellationToken);
+
+        return requests.Select(r =>
+        {
+            var dto = MapToDto(r);
+            if (employees.TryGetValue(r.EmployeeId, out var employee))
+            {
+                dto.EmployeeName = employee.FullName;
+                dto.EmployeeEmail = employee.Email;
+            }
+            return dto;
+        }).ToList();
     }
 
     public async Task<RequestDto> UpdateAsync(
@@ -177,6 +192,35 @@ public class RequestService : IRequestService
 
         await _requestRepository.SaveChangesAsync(cancellationToken);
         return MapToDto(absenceRequest);
+    }
+
+    private async Task<RequestDto> MapToDtoEnrichedAsync(
+        AbsenceRequest request,
+        CancellationToken cancellationToken)
+    {
+        var dto = MapToDto(request);
+
+        var employee = await _userRepository.GetByIdAsync(request.EmployeeId, cancellationToken);
+        if (employee != null)
+        {
+            dto.EmployeeName = employee.FullName;
+            dto.EmployeeEmail = employee.Email;
+
+            if (employee.AssignedManagerId.HasValue)
+            {
+                var manager = await _userRepository.GetByIdAsync(
+                    employee.AssignedManagerId.Value, cancellationToken);
+                dto.AssignedManagerName = manager?.FullName;
+            }
+        }
+
+        if (request.ApproverId.HasValue)
+        {
+            var approver = await _userRepository.GetByIdAsync(request.ApproverId.Value, cancellationToken);
+            dto.ApproverName = approver?.FullName;
+        }
+
+        return dto;
     }
 
     private static RequestDto MapToDto(AbsenceRequest request) => new()
