@@ -80,5 +80,6 @@ AuthEndpoints.Map(app);
 // Resource endpoints
 AbsenceTypeEndpoints.Map(app);
 UserEndpoints.Map(app);
+RequestEndpoints.Map(app);
 
 app.Run();

@@ -19,8 +19,10 @@ public static class InfrastructureServiceExtensions
 
         services.AddScoped<IUserRepository, EfCoreUserRepository>();
         services.AddScoped<IAbsenceTypeRepository, EfCoreAbsenceTypeRepository>();
+        services.AddScoped<IRequestRepository, EfCoreRequestRepository>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAbsenceTypeService, AbsenceTypeService>();
+        services.AddScoped<IRequestService, RequestService>();
 
         return services;
     }
