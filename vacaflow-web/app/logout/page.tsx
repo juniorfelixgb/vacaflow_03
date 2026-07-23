@@ -9,7 +9,7 @@ export default function LogoutPage() {
   useEffect(() => {
     const logout = async () => {
       try {
-        await fetch('http://localhost:5000/api/auth/logout', {
+        await fetch('http://localhost:5050/api/auth/logout', {
           method: 'POST',
           credentials: 'include',
         });

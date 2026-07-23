@@ -4,8 +4,8 @@
     {
       "name": "vacaflow-backend",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["watch", "run", "-p", "VacaFlow.Api"],
-      "port": 5000
+      "runtimeArgs": ["watch", "run", "--project", "VacaFlow.Api"],
+      "port": 5050
     },
     {
       "name": "vacaflow-frontend",

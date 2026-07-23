@@ -22,7 +22,7 @@ This repository contains:
 | Layer | Tech | Version | Port |
 |-------|------|---------|------|
 | Frontend | Next.js + React + TypeScript | 14/18/5 | 3000 |
-| Backend API | ASP.NET Core Minimal API | .NET 8 | 5000 |
+| Backend API | ASP.NET Core Minimal API | .NET 8 | 5050 |
 | Database | SQLite (file-based, auto-provisioned) | 3.x | (in-process) |
 | ORM | Entity Framework Core | 8.x | — |
 | Auth | ASP.NET Core Cookies (HttpOnly, SameSite=Strict) | Built-in | — |
@@ -62,8 +62,9 @@ cd VacaFlow.Api
 
 # Run the API (watch mode, auto-rebuild on file changes)
 dotnet watch run
-# Listens on http://localhost:5000
-# Swagger UI available at http://localhost:5000/swagger
+# Listens on http://localhost:5050
+# Swagger UI available at http://localhost:5050/swagger
+# Note: port 5050 is used instead of 5000 because macOS AirPlay Receiver occupies port 5000.
 
 # Run unit tests (if test projects exist)
 dotnet test
@@ -278,7 +279,7 @@ Enable logging in `VacaFlow.Api/Program.cs` to see domain state machine transiti
 
 ## Debugging Tips
 
-1. **Ports in use**: If port 3000 or 5000 is in use, kill the process or change the port in configuration.
+1. **Ports in use**: If port 3000 or 5050 is in use, kill the process or change the port in configuration. (The API uses 5050 rather than 5000 because macOS AirPlay Receiver binds port 5000.)
 2. **CORS issues**: Frontend fetch calls must include `credentials: 'include'` to send cookies across origins.
 3. **Database locked**: If SQLite complains about a locked database, ensure no other processes have the file open. Restart the API.
 4. **Migrations fail**: Check that EF Core CLI is up to date: `dotnet tool update -g dotnet-ef`.
@@ -316,7 +317,7 @@ For the local MVP:
 |---------|--------------|-----|
 | `Cannot open database file` | Permission or path issue | Check the path in `appsettings.Development.json`; ensure directory exists |
 | API crashes on startup | Missing EF Core CLI | `dotnet tool install -g dotnet-ef` |
-| Frontend can't reach API | CORS or port mismatch | Check `localhost:5000` is running; verify `fetch` includes `credentials: 'include'` |
+| Frontend can't reach API | CORS or port mismatch | Check `localhost:5050` is running; verify `fetch` includes `credentials: 'include'` |
 | State transition failing | Business rule violation | Check the Domain layer guard; add logging to see which rule failed |
 | Database out of sync | Stale migration | Delete `vacaflow.db`, restart API |
 
