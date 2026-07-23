@@ -3,13 +3,13 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-interface AbsenceType {
-  id: string;
-  code: string;
-  nameEn: string;
-  nameEs: string;
-}
+import AppLayout from '@/components/layout/AppLayout';
+import ActionButton from '@/components/ui/ActionButton';
+import DateInput from '@/components/forms/DateInput';
+import TextArea from '@/components/forms/TextArea';
+import { absenceTypeApi, requestApi } from '@/lib/api';
+import { AbsenceType } from '@/lib/types';
+import { getAbsenceTypeEmoji, getAbsenceTypeName } from '@/lib/absenceTypeMapping';
 
 interface FormData {
   absenceTypeId: string;
@@ -33,16 +33,8 @@ export default function NewRequestPage() {
   useEffect(() => {
     const fetchAbsenceTypes = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/absence-types', {
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch absence types');
-        }
-
-        const data = await response.json();
-        setAbsenceTypes(data);
+        const types = await absenceTypeApi.getAll();
+        setAbsenceTypes(types);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load absence types');
       }
@@ -87,21 +79,7 @@ export default function NewRequestPage() {
         throw new Error('End date must be on or after start date');
       }
 
-      const response = await fetch('http://localhost:5000/api/requests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Failed to create request');
-      }
-
-      const result = await response.json();
+      const result = await requestApi.create(formData);
       router.push(`/requests/${result.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create request';
@@ -111,20 +89,31 @@ export default function NewRequestPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Create Request</h1>
+  const selectedAbsenceType = absenceTypes.find((t) => t.id === formData.absenceTypeId);
 
+  return (
+    <AppLayout backLink={{ label: 'Back to requests', href: '/requests' }}>
+      <div className="max-w-2xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-h1 font-bold text-text-primary mb-2">Create Request</h1>
+          <p className="text-sm text-text-muted">
+            Draft your absence request. You can edit it before submitting.
+          </p>
+        </div>
+
+        {/* Error Message */}
         {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-800">{error}</p>
+          <div className="mb-6 p-4 bg-status-rejected-bg border border-status-rejected-border rounded-card">
+            <p className="text-sm text-status-rejected-text">{error}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-8 space-y-6">
+        {/* Form Card */}
+        <form onSubmit={handleSubmit} className="bg-bg-surface border border-border-warm rounded-card p-6 space-y-6">
+          {/* Absence Type Selection */}
           <div>
-            <label htmlFor="absenceTypeId" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="absenceTypeId" className="block text-label uppercase text-text-faint mb-3">
               Absence Type
             </label>
             <select
@@ -133,82 +122,80 @@ export default function NewRequestPage() {
               value={formData.absenceTypeId}
               onChange={handleChange}
               disabled={loading}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+              className="w-full px-3 py-2 border border-border-warm rounded-btn bg-bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-orange disabled:bg-gray-100"
             >
               <option value="">Select absence type</option>
               {absenceTypes.map((type) => (
                 <option key={type.id} value={type.id}>
-                  {type.nameEn} ({type.code})
+                  {getAbsenceTypeEmoji(type.code)} {getAbsenceTypeName(type)}
                 </option>
               ))}
             </select>
           </div>
 
+          {/* Absence Type Preview */}
+          {selectedAbsenceType && (
+            <div className="bg-bg-orange-tint border border-border-warm rounded-card p-4 flex items-center gap-3">
+              <span className="text-2xl">{getAbsenceTypeEmoji(selectedAbsenceType.code)}</span>
+              <div>
+                <p className="text-sm font-bold text-text-primary">
+                  {getAbsenceTypeName(selectedAbsenceType)}
+                </p>
+                <p className="text-xs text-text-faint">{selectedAbsenceType.code.toUpperCase()}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date
-              </label>
-              <input
-                type="date"
-                id="startDate"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleChange}
-                disabled={loading}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-2">
-                End Date
-              </label>
-              <input
-                type="date"
-                id="endDate"
-                name="endDate"
-                value={formData.endDate}
-                onChange={handleChange}
-                disabled={loading}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-              Reason
-            </label>
-            <textarea
-              id="reason"
-              name="reason"
-              value={formData.reason}
+            <DateInput
+              label="Start Date"
+              name="startDate"
+              value={formData.startDate}
               onChange={handleChange}
               disabled={loading}
-              rows={5}
-              placeholder="Provide details about your request"
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+            />
+            <DateInput
+              label="End Date"
+              name="endDate"
+              value={formData.endDate}
+              onChange={handleChange}
+              disabled={loading}
             />
           </div>
 
-          <div className="flex gap-4 pt-4">
-            <button
+          {/* Reason */}
+          <TextArea
+            label="Reason"
+            name="reason"
+            value={formData.reason}
+            onChange={handleChange}
+            disabled={loading}
+            placeholder="Provide details about your request..."
+          />
+
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
+            <ActionButton
+              variant="primary"
               type="submit"
+              loading={loading}
               disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 rounded-md transition"
+              fullWidth
             >
-              {loading ? 'Creating...' : 'Create Request'}
-            </button>
-            <Link
-              href="/requests"
-              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 rounded-md transition text-center"
-            >
-              Cancel
+              Create Request
+            </ActionButton>
+            <Link href="/requests" className="flex-1">
+              <button
+                type="button"
+                className="w-full px-6 py-3 rounded-btn font-bold text-sm transition bg-white border-2 border-border-warm text-text-primary hover:border-border-warm-alt disabled:opacity-50"
+              >
+                Cancel
+              </button>
             </Link>
           </div>
         </form>
       </div>
-    </div>
+    </AppLayout>
   );
 }

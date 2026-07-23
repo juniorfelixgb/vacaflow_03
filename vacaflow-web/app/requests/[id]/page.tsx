@@ -1,19 +1,19 @@
 'use client';
 
 import { useEffect, useState, FormEvent } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-
-interface Request {
-  id: string;
-  absenceTypeId: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: string;
-  approvalComment?: string;
-  createdAt: string;
-}
+import { useParams } from 'next/navigation';
+import AppLayout from '@/components/layout/AppLayout';
+import RequestCard from '@/components/ui/RequestCard';
+import TimelineStep from '@/components/ui/TimelineStep';
+import ReviewerBox from '@/components/ui/ReviewerBox';
+import ActionButton from '@/components/ui/ActionButton';
+import DateInput from '@/components/forms/DateInput';
+import TextArea from '@/components/forms/TextArea';
+import StatusPill from '@/components/ui/StatusPill';
+import { requestApi, absenceTypeApi } from '@/lib/api';
+import { Request, AbsenceType } from '@/lib/types';
+import { formatDate, calculateWorkingDays } from '@/lib/utils';
+import { isDraft, isSubmitted } from '@/lib/statusMapping';
 
 interface EditData {
   startDate: string;
@@ -22,9 +22,10 @@ interface EditData {
 }
 
 export default function RequestDetailPage() {
-  const router = useRouter();
   const { id } = useParams();
   const [request, setRequest] = useState<Request | null>(null);
+  const [absenceType, setAbsenceType] = useState<AbsenceType | undefined>(undefined);
+  const [allAbsenceTypes, setAllAbsenceTypes] = useState<AbsenceType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -36,22 +37,20 @@ export default function RequestDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    const fetchRequest = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/requests/${id}`, {
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch request');
-        }
-
-        const data = await response.json();
-        setRequest(data);
+        const [req, types] = await Promise.all([
+          requestApi.getById(id as string),
+          absenceTypeApi.getAll(),
+        ]);
+        setRequest(req);
+        setAllAbsenceTypes(types);
+        const type = types.find((t) => t.id === req.absenceTypeId);
+        setAbsenceType(type);
         setEditData({
-          startDate: data.startDate,
-          endDate: data.endDate,
-          reason: data.reason,
+          startDate: req.startDate,
+          endDate: req.endDate,
+          reason: req.reason,
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load request');
@@ -61,7 +60,7 @@ export default function RequestDetailPage() {
     };
 
     if (id) {
-      fetchRequest();
+      fetchData();
     }
   }, [id]);
 
@@ -78,21 +77,7 @@ export default function RequestDetailPage() {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/requests/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(editData),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Failed to update request');
-      }
-
-      const updated = await response.json();
+      const updated = await requestApi.update(id as string, editData);
       setRequest(updated);
       setIsEditing(false);
     } catch (err) {
@@ -107,17 +92,7 @@ export default function RequestDetailPage() {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/requests/${id}/submit`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Failed to submit request');
-      }
-
-      const updated = await response.json();
+      const updated = await requestApi.submit(id as string);
       setRequest(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit request');
@@ -133,17 +108,7 @@ export default function RequestDetailPage() {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/requests/${id}/cancel`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Failed to cancel request');
-      }
-
-      const updated = await response.json();
+      const updated = await requestApi.cancel(id as string);
       setRequest(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to cancel request');
@@ -153,186 +118,177 @@ export default function RequestDetailPage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">Loading...</div>;
+    return (
+      <AppLayout backLink={{ label: 'Back to requests', href: '/requests' }}>
+        <div className="text-center py-8">
+          <p className="text-text-muted">Loading...</p>
+        </div>
+      </AppLayout>
+    );
   }
 
   if (!request) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-2xl mx-auto">
-          <p className="text-red-800">Request not found</p>
-          <Link href="/requests" className="text-blue-600 hover:underline mt-4">
-            Back to requests
-          </Link>
-        </div>
-      </div>
+      <AppLayout backLink={{ label: 'Back to requests', href: '/requests' }}>
+        <p className="text-status-rejected-text">Request not found</p>
+      </AppLayout>
     );
   }
 
-  const isDraft = request.status === 'Draft';
-  const isSubmitted = request.status === 'Submitted';
-  const isFinal = ['Approved', 'Rejected', 'Cancelled'].includes(request.status);
+  const isDraftStatus = isDraft(request.status);
+  const isSubmittedStatus = isSubmitted(request.status);
+  const isFinalStatus = ['Approved', 'Rejected', 'Cancelled'].includes(request.status);
+  const workingDays = calculateWorkingDays(request.startDate, request.endDate);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto">
-        <Link href="/requests" className="text-blue-600 hover:underline mb-4 inline-block">
-          ← Back to requests
-        </Link>
-
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Request Details</h1>
-
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-800">{error}</p>
-          </div>
-        )}
-
-        <div className="bg-white rounded-lg shadow p-8 space-y-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm text-gray-600">Status</p>
-              <p className="text-lg font-semibold text-gray-900">{request.status}</p>
+    <AppLayout backLink={{ label: 'Back to requests', href: '/requests' }}>
+      <div className="grid grid-cols-[1.55fr_1fr] gap-7">
+        {/* Left Column */}
+        <div className="space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-status-rejected-bg border border-status-rejected-border rounded-card">
+              <p className="text-sm text-status-rejected-text">{error}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Created</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {new Date(request.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
+          )}
 
-          {isEditing && isDraft ? (
-            <form onSubmit={handleSaveEdit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    id="startDate"
-                    name="startDate"
-                    value={editData.startDate}
-                    onChange={handleEditChange}
-                    disabled={actionLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    id="endDate"
-                    name="endDate"
-                    value={editData.endDate}
-                    onChange={handleEditChange}
-                    disabled={actionLoading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-1">
-                  Reason
-                </label>
-                <textarea
-                  id="reason"
-                  name="reason"
-                  value={editData.reason}
-                  onChange={handleEditChange}
-                  disabled={actionLoading}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="flex gap-4">
-                <button
+          {/* Request Card */}
+          {!isEditing ? (
+            <RequestCard request={request} absenceType={absenceType} showStatus={true} />
+          ) : (
+            <form onSubmit={handleSaveEdit} className="bg-bg-surface border border-border-warm rounded-card p-6 space-y-4">
+              <DateInput
+                label="Start Date"
+                name="startDate"
+                value={editData.startDate}
+                onChange={handleEditChange}
+                disabled={actionLoading}
+              />
+              <DateInput
+                label="End Date"
+                name="endDate"
+                value={editData.endDate}
+                onChange={handleEditChange}
+                disabled={actionLoading}
+              />
+              <TextArea
+                label="Reason"
+                name="reason"
+                value={editData.reason}
+                onChange={handleEditChange}
+                disabled={actionLoading}
+              />
+              <div className="flex gap-3 pt-4">
+                <ActionButton
+                  variant="primary"
                   type="submit"
                   disabled={actionLoading}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 rounded-md"
+                  loading={actionLoading}
+                  fullWidth
                 >
-                  {actionLoading ? 'Saving...' : 'Save Changes'}
-                </button>
+                  Save Changes
+                </ActionButton>
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
-                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 rounded-md"
+                  className="flex-1 px-6 py-3 rounded-btn font-bold text-sm transition bg-white border-2 border-border-warm text-text-primary hover:border-border-warm-alt disabled:opacity-50"
                 >
                   Cancel Edit
                 </button>
               </div>
             </form>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-6 border-t pt-6">
-                <div>
-                  <p className="text-sm text-gray-600">Start Date</p>
-                  <p className="text-lg font-semibold text-gray-900">{request.startDate}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">End Date</p>
-                  <p className="text-lg font-semibold text-gray-900">{request.endDate}</p>
-                </div>
-              </div>
-
-              <div className="border-t pt-6">
-                <p className="text-sm text-gray-600">Reason</p>
-                <p className="text-gray-900 whitespace-pre-wrap">{request.reason}</p>
-              </div>
-
-              {request.approvalComment && (
-                <div className="border-t pt-6 bg-blue-50 p-4 rounded">
-                  <p className="text-sm text-gray-600">Manager Comment</p>
-                  <p className="text-gray-900">{request.approvalComment}</p>
-                </div>
-              )}
-            </>
           )}
 
-          <div className="border-t pt-6 flex gap-3 flex-wrap">
-            {isDraft && !isEditing && (
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-3">
+            {isDraftStatus && !isEditing && (
               <>
-                <button
-                  onClick={() => setIsEditing(true)}
+                <ActionButton
+                  variant="primary"
+                  loading={actionLoading}
                   disabled={actionLoading}
-                  className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-md"
+                  onClick={handleSubmit}
+                  icon="✈️"
+                >
+                  Submit for approval
+                </ActionButton>
+                <ActionButton
+                  variant="secondary"
+                  disabled={actionLoading}
+                  onClick={() => setIsEditing(true)}
+                  icon="✏️"
                 >
                   Edit
-                </button>
-                <button
-                  onClick={handleSubmit}
+                </ActionButton>
+                <ActionButton
+                  variant="reject"
                   disabled={actionLoading}
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-md"
-                >
-                  {actionLoading ? 'Submitting...' : 'Submit'}
-                </button>
-                <button
                   onClick={handleCancel}
-                  disabled={actionLoading}
-                  className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-md"
+                  icon="✕"
                 >
-                  Cancel Request
-                </button>
+                  Cancel request
+                </ActionButton>
               </>
             )}
-            {isSubmitted && (
-              <button
-                onClick={handleCancel}
+
+            {isSubmittedStatus && (
+              <ActionButton
+                variant="reject"
                 disabled={actionLoading}
-                className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-md"
+                onClick={handleCancel}
+                icon="✕"
               >
-                Cancel Request
-              </button>
+                Cancel request
+              </ActionButton>
             )}
-            {isFinal && (
-              <p className="text-sm text-gray-600">This request cannot be modified.</p>
+
+            {isFinalStatus && (
+              <p className="text-sm text-text-muted">This request cannot be modified.</p>
             )}
           </div>
         </div>
+
+        {/* Right Column - Timeline */}
+        <div className="space-y-6">
+          {/* Timeline */}
+          <div className="bg-bg-surface border border-border-warm rounded-card p-6">
+            <h3 className="text-h3 font-bold text-text-primary mb-6">Request timeline</h3>
+
+            <div className="space-y-2">
+              <TimelineStep
+                stepNumber={1}
+                title="Created as draft"
+                timestamp={`${formatDate(request.createdAt)} · 10:24`}
+                isCompleted={true}
+              />
+
+              <TimelineStep
+                stepNumber={2}
+                title="Submitted for approval"
+                timestamp={request.submittedAt ? formatDate(request.submittedAt) : undefined}
+                isCompleted={!isDraftStatus}
+                isPending={isDraftStatus}
+              />
+
+              <TimelineStep
+                stepNumber={3}
+                title="Manager decision"
+                timestamp={request.reviewedAt ? formatDate(request.reviewedAt) : undefined}
+                isCompleted={isFinalStatus}
+                isPending={false}
+                isLastStep={true}
+              />
+            </div>
+          </div>
+
+          {/* Reviewer Box */}
+          <ReviewerBox
+            initials="JP"
+            name="James Parker"
+            title="Your manager"
+          />
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

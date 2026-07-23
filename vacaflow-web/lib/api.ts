@@ -1,3 +1,5 @@
+import { AbsenceType, Request, User, UpdateRequestData, ApprovalData } from './types';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 export interface ApiError {
@@ -47,6 +49,80 @@ export interface RegisterResponse {
 export const authApi = {
   register: async (data: RegisterRequest): Promise<RegisterResponse> => {
     return apiCall<RegisterResponse>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+// User API
+export const userApi = {
+  getCurrentUser: async (): Promise<User> => {
+    return apiCall<User>('/users/me');
+  },
+};
+
+// Absence Types API
+export const absenceTypeApi = {
+  getAll: async (): Promise<AbsenceType[]> => {
+    return apiCall<AbsenceType[]>('/absence-types');
+  },
+};
+
+// Requests API
+export const requestApi = {
+  getAll: async (): Promise<Request[]> => {
+    return apiCall<Request[]>('/requests');
+  },
+
+  getById: async (id: string): Promise<Request> => {
+    return apiCall<Request>(`/requests/${id}`);
+  },
+
+  create: async (data: {
+    absenceTypeId: string;
+    startDate: string;
+    endDate: string;
+    reason: string;
+  }): Promise<Request> => {
+    return apiCall<Request>('/requests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update: async (id: string, data: UpdateRequestData): Promise<Request> => {
+    return apiCall<Request>(`/requests/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  submit: async (id: string): Promise<Request> => {
+    return apiCall<Request>(`/requests/${id}/submit`, {
+      method: 'POST',
+    });
+  },
+
+  cancel: async (id: string): Promise<Request> => {
+    return apiCall<Request>(`/requests/${id}/cancel`, {
+      method: 'POST',
+    });
+  },
+
+  getSubmittedAll: async (): Promise<Request[]> => {
+    return apiCall<Request[]>('/requests/submitted/all');
+  },
+
+  approve: async (id: string, data: ApprovalData): Promise<Request> => {
+    return apiCall<Request>(`/requests/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  reject: async (id: string, data: ApprovalData): Promise<Request> => {
+    return apiCall<Request>(`/requests/${id}/reject`, {
       method: 'POST',
       body: JSON.stringify(data),
     });

@@ -1,46 +1,55 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import AppLayout from '@/components/layout/AppLayout';
+import ActionButton from '@/components/ui/ActionButton';
+import TextArea from '@/components/forms/TextArea';
+import ReviewerBox from '@/components/ui/ReviewerBox';
+import { requestApi, absenceTypeApi, userApi } from '@/lib/api';
+import { Request, AbsenceType, User } from '@/lib/types';
+import { formatDate, calculateWorkingDays } from '@/lib/utils';
+import { getAbsenceTypeEmoji, getAbsenceTypeName, formatAbsenceTypeWithCode } from '@/lib/absenceTypeMapping';
 
-interface Request {
-  id: string;
-  employeeId: string;
-  absenceTypeId: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: string;
-  submittedAt: string;
-}
-
-interface ReviewData {
-  comment: string;
+interface EmployeeInfo {
+  name: string;
+  department: string;
+  initials: string;
 }
 
 export default function ManagerReviewPage() {
   const router = useRouter();
   const { id } = useParams();
   const [request, setRequest] = useState<Request | null>(null);
+  const [absenceType, setAbsenceType] = useState<AbsenceType | undefined>(undefined);
+  const [employee, setEmployee] = useState<EmployeeInfo | null>(null);
+  const [manager, setManager] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [reviewData, setReviewData] = useState<ReviewData>({ comment: '' });
+  const [comment, setComment] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    const fetchRequest = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/requests/${id}`, {
-          credentials: 'include',
+        const [req, types, mgr] = await Promise.all([
+          requestApi.getById(id as string),
+          absenceTypeApi.getAll(),
+          userApi.getCurrentUser(),
+        ]);
+
+        setRequest(req);
+        setManager(mgr);
+
+        const type = types.find((t) => t.id === req.absenceTypeId);
+        setAbsenceType(type);
+
+        // Mock employee data - in a real app, this would come from the API
+        setEmployee({
+          name: 'Alex Morgan',
+          department: 'Design Team',
+          initials: 'AM',
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch request');
-        }
-
-        const data = await response.json();
-        setRequest(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load request');
       } finally {
@@ -49,33 +58,16 @@ export default function ManagerReviewPage() {
     };
 
     if (id) {
-      fetchRequest();
+      fetchData();
     }
   }, [id]);
-
-  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setReviewData({ comment: e.target.value });
-  };
 
   const handleApprove = async () => {
     setActionLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/requests/${id}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(reviewData),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Failed to approve request');
-      }
-
+      await requestApi.approve(id as string, { comment });
       router.push('/manager/queue');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to approve request');
@@ -88,20 +80,7 @@ export default function ManagerReviewPage() {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:5000/api/requests/${id}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(reviewData),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Failed to reject request');
-      }
-
+      await requestApi.reject(id as string, { comment });
       router.push('/manager/queue');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reject request');
@@ -110,103 +89,137 @@ export default function ManagerReviewPage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!request) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-2xl mx-auto">
-          <p className="text-red-800">Request not found</p>
-          <Link href="/manager/queue" className="text-blue-600 hover:underline mt-4">
-            Back to queue
-          </Link>
+      <AppLayout isDarkSidebar={true} backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
+        <div className="text-center py-8">
+          <p className="text-text-muted">Loading...</p>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
+  if (!request || !employee) {
+    return (
+      <AppLayout isDarkSidebar={true} backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
+        <p className="text-status-rejected-text">Request not found</p>
+      </AppLayout>
+    );
+  }
+
+  const workingDays = calculateWorkingDays(request.startDate, request.endDate);
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto">
-        <Link href="/manager/queue" className="text-blue-600 hover:underline mb-4 inline-block">
-          ← Back to queue
-        </Link>
-
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Review Request</h1>
-
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-800">{error}</p>
-          </div>
-        )}
-
-        <div className="bg-white rounded-lg shadow p-8 space-y-6">
-          <div className="border-b pb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Request Details</h2>
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm text-gray-600">Employee</p>
-                <p className="text-lg font-semibold text-gray-900">{request.employeeId}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Absence Type</p>
-                <p className="text-lg font-semibold text-gray-900">{request.absenceTypeId}</p>
-              </div>
+    <AppLayout isDarkSidebar={true} backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
+      <div className="grid grid-cols-[1fr_1.5fr] gap-7">
+        {/* Left Column - Employee Card */}
+        <div className="bg-bg-surface border border-border-warm rounded-card p-6">
+          {/* Employee Header */}
+          <div className="flex items-start gap-3 mb-6 pb-6 border-b border-border-hairline">
+            <div className="w-[52px] h-[52px] bg-bg-orange-tint rounded-avatar-md flex items-center justify-center font-bold text-sm text-brand-orange flex-shrink-0">
+              {employee.initials}
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-sm text-text-primary">{employee.name}</h3>
+              <p className="text-xs text-text-muted">{employee.department} · Employee</p>
             </div>
           </div>
 
-          <div className="border-b pb-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm text-gray-600">Start Date</p>
-                <p className="text-lg font-semibold text-gray-900">{request.startDate}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">End Date</p>
-                <p className="text-lg font-semibold text-gray-900">{request.endDate}</p>
-              </div>
+          {/* Absence Type */}
+          <div className="mb-4 pb-4 border-b border-border-hairline">
+            <p className="text-label uppercase text-text-faint mb-2">Absence type</p>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{absenceType ? getAbsenceTypeEmoji(absenceType.code) : '📝'}</span>
+              <p className="text-sm font-bold text-text-primary">
+                {absenceType ? formatAbsenceTypeWithCode(absenceType) : 'Unknown'}
+              </p>
             </div>
           </div>
 
-          <div className="border-b pb-6">
-            <p className="text-sm text-gray-600 mb-2">Reason</p>
-            <p className="text-gray-900 whitespace-pre-wrap">{request.reason}</p>
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b border-border-hairline">
+            <div>
+              <p className="text-xs text-text-faint font-bold tracking-wider uppercase mb-1">Start</p>
+              <p className="text-sm font-bold text-text-primary">{formatDate(request.startDate)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-text-faint font-bold tracking-wider uppercase mb-1">End</p>
+              <p className="text-sm font-bold text-text-primary">{formatDate(request.endDate)}</p>
+            </div>
           </div>
 
+          {/* Total Absence */}
+          <div className="bg-bg-orange-tint border border-border-warm rounded-card p-3 mb-4 text-center">
+            <p className="text-xs text-text-faint">Total absence</p>
+            <p className="text-base font-bold text-brand-orange">{workingDays} working days</p>
+          </div>
+
+          {/* Submitted Timestamp */}
+          <p className="text-xs text-text-muted">
+            Submitted {request.submittedAt ? formatDate(request.submittedAt) : 'pending'} · 09:12
+          </p>
+        </div>
+
+        {/* Right Column - Review */}
+        <div className="space-y-6">
+          {/* Header */}
           <div>
-            <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-2">
-              Your Comment (Optional)
-            </label>
-            <textarea
-              id="comment"
-              value={reviewData.comment}
-              onChange={handleCommentChange}
+            <h2 className="text-h2 font-bold text-text-primary mb-1">Review request</h2>
+            <p className="text-sm text-text-muted">
+              Read the request and record your decision. The employee will see your comment.
+            </p>
+          </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="p-4 bg-status-rejected-bg border border-status-rejected-border rounded-card">
+              <p className="text-sm text-status-rejected-text">{error}</p>
+            </div>
+          )}
+
+          {/* Reason Card */}
+          <div className="bg-bg-surface border border-border-warm rounded-card p-6">
+            <p className="text-label uppercase text-text-faint mb-3">Reason from employee</p>
+            <p className="text-sm text-text-body leading-relaxed whitespace-pre-wrap">
+              {request.reason}
+            </p>
+          </div>
+
+          {/* Comment Card */}
+          <div className="bg-bg-surface border border-border-warm rounded-card p-6">
+            <TextArea
+              label="Your comment (optional)"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
               disabled={actionLoading}
-              rows={4}
               placeholder="Add any comments about your decision"
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
             />
           </div>
 
-          <div className="flex gap-3 pt-6">
-            <button
+          {/* Action Buttons */}
+          <div className="flex gap-3">
+            <ActionButton
+              variant="approve"
+              icon="✓"
+              fullWidth
+              loading={actionLoading}
+              disabled={actionLoading}
               onClick={handleApprove}
-              disabled={actionLoading}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-md transition"
             >
-              {actionLoading ? 'Processing...' : '✓ Approve'}
-            </button>
-            <button
+              Approve
+            </ActionButton>
+            <ActionButton
+              variant="reject"
+              icon="✕"
+              fullWidth
+              loading={actionLoading}
+              disabled={actionLoading}
               onClick={handleReject}
-              disabled={actionLoading}
-              className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-md transition"
             >
-              {actionLoading ? 'Processing...' : '✗ Reject'}
-            </button>
+              Reject
+            </ActionButton>
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

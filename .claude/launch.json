@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "vacaflow-backend",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["watch", "run", "-p", "VacaFlow.Api"],
+      "port": 5000
+    },
+    {
+      "name": "vacaflow-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "cwd": "vacaflow-web"
+    }
+  ]
+}

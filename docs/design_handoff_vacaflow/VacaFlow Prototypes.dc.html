@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<meta name="design_doc_mode" content="canvas">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'JetBrains Mono',ui-monospace,monospace;}
+  a{color:#C2410C;}
+  a:hover{color:#9A3412;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:#E0DAD2;border-radius:8px;border:3px solid transparent;background-clip:content-box;}
+</style>
+</helmet>
+
+<div style="background:#EDE8E2;padding:56px 64px;display:flex;flex-direction:column;gap:64px;font-family:'JetBrains Mono',monospace;min-width:1400px;">
+
+  <div style="display:flex;flex-direction:column;gap:10px;">
+    <div style="display:inline-flex;align-items:center;gap:14px;">
+      <div style="width:38px;height:38px;border-radius:11px;background:#EA580C;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:17px;">V</div>
+      <span style="font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#1C1917;">VacaFlow</span>
+      <span style="font-size:11px;font-weight:600;color:#8A817A;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border:1px solid #D9D2C9;border-radius:999px;">Redesign · 3 key screens</span>
+    </div>
+    <p style="margin:0;font-size:13px;color:#78716C;max-width:640px;line-height:1.6;">Absence request management for IGS Solutions — same functionality, warmer and more human. Pan and zoom to explore each screen.</p>
+  </div>
+
+  <!-- ===================== SCREEN 1a — MY REQUESTS ===================== -->
+  <div id="1a" style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:12px;font-weight:800;color:#fff;background:#EA580C;padding:5px 11px;border-radius:8px;letter-spacing:.5px;">1a</span>
+      <span style="font-size:13px;font-weight:700;color:#1C1917;letter-spacing:.3px;">EMPLOYEE · MY REQUESTS</span>
+      <span style="font-size:12px;color:#8A817A;">List &amp; history</span>
+    </div>
+
+    <div style="display:flex;width:1300px;min-height:820px;background:#F7F4F0;border-radius:20px;overflow:hidden;border:1px solid #E1DAD1;box-shadow:0 30px 60px -30px rgba(60,40,20,.28);">
+      <!-- sidebar -->
+      <aside style="width:250px;background:#FFFFFF;border-right:1px solid #EFEAE3;padding:26px 18px;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;gap:11px;padding:0 8px 26px;">
+          <div style="width:34px;height:34px;border-radius:10px;background:#EA580C;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;">V</div>
+          <span style="font-size:17px;font-weight:800;letter-spacing:-0.4px;color:#1C1917;">VacaFlow</span>
+        </div>
+        <nav style="display:flex;flex-direction:column;gap:4px;">
+          <a href="#" style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;font-size:13px;color:#57534E;text-decoration:none;font-weight:500;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a>
+          <a href="#1a" style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;font-size:13px;background:#FFF3EC;color:#C2410C;text-decoration:none;font-weight:700;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>My Requests</a>
+        </nav>
+        <div style="margin-top:auto;padding:14px;background:#FBF7F2;border:1px solid #F0E9DF;border-radius:14px;">
+          <p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#44403C;">Need time off?</p>
+          <p style="margin:0 0 10px;font-size:11px;color:#8A817A;line-height:1.5;">Draft it first, submit when ready.</p>
+          <a href="#" style="display:block;text-align:center;background:#1C1917;color:#fff;font-size:12px;font-weight:600;padding:9px;border-radius:9px;text-decoration:none;">+ New Request</a>
+        </div>
+      </aside>
+
+      <!-- main -->
+      <main style="flex:1;display:flex;flex-direction:column;">
+        <header style="display:flex;align-items:center;justify-content:space-between;padding:20px 36px;border-bottom:1px solid #EFEAE3;background:#FFFFFF;">
+          <div style="font-size:12px;color:#A8A29E;">IGS Solutions</div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:right;">
+              <div style="font-size:12px;font-weight:700;color:#1C1917;">Alex Morgan</div>
+              <div style="font-size:11px;color:#A8A29E;">Employee</div>
+            </div>
+            <div style="width:38px;height:38px;border-radius:11px;background:#FFF3EC;color:#C2410C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">AM</div>
+          </div>
+        </header>
+
+        <div style="padding:34px 36px;display:flex;flex-direction:column;gap:24px;">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;">
+            <div>
+              <h1 style="margin:0 0 6px;font-size:27px;font-weight:800;letter-spacing:-0.8px;color:#1C1917;">My Requests</h1>
+              <p style="margin:0;font-size:13px;color:#78716C;">Track your absence requests from draft to decision.</p>
+            </div>
+            <a href="#" style="display:inline-flex;align-items:center;gap:8px;background:#EA580C;color:#fff;font-size:13px;font-weight:700;padding:12px 20px;border-radius:12px;text-decoration:none;box-shadow:0 8px 20px -8px rgba(234,88,12,.6);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New Request</a>
+          </div>
+
+          <!-- filter tabs -->
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:12px;font-weight:700;color:#1C1917;background:#FFFFFF;border:1px solid #EA580C;box-shadow:inset 0 0 0 1px #EA580C;padding:8px 15px;border-radius:999px;">All · 5</span>
+            <span style="font-size:12px;font-weight:600;color:#78716C;background:#FFFFFF;border:1px solid #EAE3DA;padding:8px 15px;border-radius:999px;">Draft · 1</span>
+            <span style="font-size:12px;font-weight:600;color:#78716C;background:#FFFFFF;border:1px solid #EAE3DA;padding:8px 15px;border-radius:999px;">Submitted · 1</span>
+            <span style="font-size:12px;font-weight:600;color:#78716C;background:#FFFFFF;border:1px solid #EAE3DA;padding:8px 15px;border-radius:999px;">Approved · 1</span>
+            <span style="font-size:12px;font-weight:600;color:#78716C;background:#FFFFFF;border:1px solid #EAE3DA;padding:8px 15px;border-radius:999px;">Closed · 2</span>
+          </div>
+
+          <!-- table -->
+          <div style="background:#FFFFFF;border:1px solid #EDE7DF;border-radius:16px;overflow:hidden;">
+            <div style="display:grid;grid-template-columns:1.6fr 1.7fr 1fr 1fr 0.7fr;gap:16px;padding:14px 24px;background:#FBF8F4;border-bottom:1px solid #EDE7DF;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#A8A29E;">
+              <div>Type</div><div>Dates</div><div>Status</div><div>Created</div><div style="text-align:right;">Action</div>
+            </div>
+            <sc-for list="{{ requests }}" as="req" hint-placeholder-count="5">
+              <div style="display:grid;grid-template-columns:1.6fr 1.7fr 1fr 1fr 0.7fr;gap:16px;align-items:center;padding:18px 24px;border-bottom:1px solid #F2ECE4;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="width:34px;height:34px;border-radius:10px;background:#FBF3EC;display:flex;align-items:center;justify-content:center;flex-shrink:0;">{{ req.emoji }}</div>
+                  <div>
+                    <div style="font-size:13px;font-weight:700;color:#1C1917;">{{ req.type }}</div>
+                    <div style="font-size:11px;color:#B0A99F;">{{ req.id }}</div>
+                  </div>
+                </div>
+                <div>
+                  <div style="font-size:13px;color:#44403C;font-weight:500;">{{ req.dates }}</div>
+                  <div style="font-size:11px;color:#B0A99F;">{{ req.days }} working days</div>
+                </div>
+                <div>
+                  <sc-if value="{{ req.isDraft }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;background:#F5F3F0;color:#78716C;border:1px solid #E7E2DA;"><span style="width:6px;height:6px;border-radius:50%;background:#A8A29E;"></span>Draft</span></sc-if>
+                  <sc-if value="{{ req.isSubmitted }}"><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;background:#FEF3E2;color:#B45309;border:1px solid #FBE2C1;"><span style="width:6px;height:6px;border-radius:50%;background:#F59E0B;"></span>Submitted</span></sc-if>
+                  <sc-if value="{{ req.isApproved }}"><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;background:#E7F6EC;color:#15803D;border:1px solid #C6EBD1;"><span style="width:6px;height:6px;border-radius:50%;background:#22C55E;"></span>Approved</span></sc-if>
+                  <sc-if value="{{ req.isRejected }}"><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;background:#FDECEC;color:#B91C1C;border:1px solid #F6D3D3;"><span style="width:6px;height:6px;border-radius:50%;background:#EF4444;"></span>Rejected</span></sc-if>
+                  <sc-if value="{{ req.isCancelled }}"><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;background:#F1EEEA;color:#8A817A;border:1px solid #E4DED6;"><span style="width:6px;height:6px;border-radius:50%;background:#B0A99F;"></span>Cancelled</span></sc-if>
+                </div>
+                <div style="font-size:12px;color:#78716C;">{{ req.created }}</div>
+                <div style="text-align:right;">
+                  <a href="#1b" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#C2410C;text-decoration:none;">View<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></a>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ===================== SCREEN 1b — REQUEST DETAIL ===================== -->
+  <div id="1b" style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:12px;font-weight:800;color:#fff;background:#EA580C;padding:5px 11px;border-radius:8px;letter-spacing:.5px;">1b</span>
+      <span style="font-size:13px;font-weight:700;color:#1C1917;letter-spacing:.3px;">EMPLOYEE · REQUEST DETAIL</span>
+      <span style="font-size:12px;color:#8A817A;">Edit · Submit · Cancel a draft</span>
+    </div>
+
+    <div style="display:flex;width:1300px;min-height:820px;background:#F7F4F0;border-radius:20px;overflow:hidden;border:1px solid #E1DAD1;box-shadow:0 30px 60px -30px rgba(60,40,20,.28);">
+      <aside style="width:250px;background:#FFFFFF;border-right:1px solid #EFEAE3;padding:26px 18px;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;gap:11px;padding:0 8px 26px;">
+          <div style="width:34px;height:34px;border-radius:10px;background:#EA580C;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;">V</div>
+          <span style="font-size:17px;font-weight:800;letter-spacing:-0.4px;color:#1C1917;">VacaFlow</span>
+        </div>
+        <nav style="display:flex;flex-direction:column;gap:4px;">
+          <a href="#" style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;font-size:13px;color:#57534E;text-decoration:none;font-weight:500;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a>
+          <a href="#1a" style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;font-size:13px;background:#FFF3EC;color:#C2410C;text-decoration:none;font-weight:700;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>My Requests</a>
+        </nav>
+      </aside>
+
+      <main style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <header style="display:flex;align-items:center;justify-content:space-between;padding:20px 36px;border-bottom:1px solid #EFEAE3;background:#FFFFFF;">
+          <a href="#1a" style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#78716C;text-decoration:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Back to requests</a>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#1C1917;">Alex Morgan</div><div style="font-size:11px;color:#A8A29E;">Employee</div></div>
+            <div style="width:38px;height:38px;border-radius:11px;background:#FFF3EC;color:#C2410C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">AM</div>
+          </div>
+        </header>
+
+        <div style="padding:34px 40px;display:grid;grid-template-columns:1.55fr 1fr;gap:28px;align-items:start;">
+          <!-- left: details -->
+          <div style="display:flex;flex-direction:column;gap:22px;">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="width:52px;height:52px;border-radius:14px;background:#FBF3EC;display:flex;align-items:center;justify-content:center;font-size:24px;">🏝️</div>
+              <div>
+                <h1 style="margin:0 0 4px;font-size:25px;font-weight:800;letter-spacing:-0.6px;color:#1C1917;">Vacation</h1>
+                <div style="font-size:12px;color:#B0A99F;">Request RQ-1035 · created Jul 20, 2026</div>
+              </div>
+              <span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;background:#F5F3F0;color:#78716C;border:1px solid #E7E2DA;"><span style="width:7px;height:7px;border-radius:50%;background:#A8A29E;"></span>Draft</span>
+            </div>
+
+            <div style="background:#FFFFFF;border:1px solid #EDE7DF;border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:22px;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+                <div>
+                  <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#A8A29E;margin-bottom:7px;">Start date</div>
+                  <div style="font-size:16px;font-weight:700;color:#1C1917;">Aug 24, 2026</div>
+                  <div style="font-size:12px;color:#B0A99F;">Monday</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#A8A29E;margin-bottom:7px;">End date</div>
+                  <div style="font-size:16px;font-weight:700;color:#1C1917;">Aug 28, 2026</div>
+                  <div style="font-size:12px;color:#B0A99F;">Friday</div>
+                </div>
+              </div>
+              <div style="height:1px;background:#F2ECE4;"></div>
+              <div>
+                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#A8A29E;margin-bottom:9px;">Reason</div>
+                <p style="margin:0;font-size:14px;line-height:1.75;color:#44403C;">Family vacation in Spain. I will be visiting my parents on the coast and taking a proper break to come back refreshed. Planned well ahead so my tasks can be handed over cleanly.</p>
+              </div>
+            </div>
+
+            <!-- actions for a draft -->
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <a href="#" style="display:inline-flex;align-items:center;gap:8px;background:#EA580C;color:#fff;font-size:13px;font-weight:700;padding:13px 22px;border-radius:12px;text-decoration:none;box-shadow:0 8px 20px -8px rgba(234,88,12,.6);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>Submit for approval</a>
+              <a href="#" style="display:inline-flex;align-items:center;gap:8px;background:#FFFFFF;color:#44403C;font-size:13px;font-weight:700;padding:13px 20px;border-radius:12px;text-decoration:none;border:1px solid #E4DDD3;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>Edit</a>
+              <a href="#" style="display:inline-flex;align-items:center;gap:8px;background:#FFFFFF;color:#B91C1C;font-size:13px;font-weight:700;padding:13px 20px;border-radius:12px;text-decoration:none;border:1px solid #F3D6D6;">Cancel request</a>
+            </div>
+          </div>
+
+          <!-- right: timeline -->
+          <div style="background:#FFFFFF;border:1px solid #EDE7DF;border-radius:16px;padding:26px;">
+            <div style="font-size:13px;font-weight:800;color:#1C1917;margin-bottom:22px;letter-spacing:-0.2px;">Request timeline</div>
+            <div style="display:flex;flex-direction:column;gap:0;">
+              <div style="display:flex;gap:14px;">
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <div style="width:30px;height:30px;border-radius:50%;background:#EA580C;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                  <div style="width:2px;flex:1;background:#F0E4D8;min-height:34px;"></div>
+                </div>
+                <div style="padding-bottom:24px;">
+                  <div style="font-size:13px;font-weight:700;color:#1C1917;">Created as draft</div>
+                  <div style="font-size:12px;color:#B0A99F;">Jul 20, 2026 · 10:24</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:14px;">
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <div style="width:30px;height:30px;border-radius:50%;background:#FFFFFF;border:2px dashed #E4DDD3;color:#B0A99F;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;">2</div>
+                  <div style="width:2px;flex:1;background:#F0E4D8;min-height:34px;"></div>
+                </div>
+                <div style="padding-bottom:24px;">
+                  <div style="font-size:13px;font-weight:700;color:#A8A29E;">Submitted for approval</div>
+                  <div style="font-size:12px;color:#C4BDB3;">Pending — submit when ready</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:14px;">
+                <div style="width:30px;height:30px;border-radius:50%;background:#FFFFFF;border:2px dashed #E4DDD3;color:#B0A99F;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;">3</div>
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#A8A29E;">Manager decision</div>
+                  <div style="font-size:12px;color:#C4BDB3;">Awaiting review</div>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:24px;padding:14px;background:#FBF7F2;border:1px solid #F0E9DF;border-radius:12px;">
+              <div style="font-size:12px;font-weight:700;color:#B45309;margin-bottom:4px;">Reviewer</div>
+              <div style="display:flex;align-items:center;gap:10px;"><div style="width:30px;height:30px;border-radius:9px;background:#FEF3E2;color:#B45309;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;">JP</div><div><div style="font-size:12px;font-weight:700;color:#44403C;">James Parker</div><div style="font-size:11px;color:#A8A29E;">Your manager</div></div></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ===================== SCREEN 1c — MANAGER REVIEW ===================== -->
+  <div id="1c" style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:12px;font-weight:800;color:#fff;background:#EA580C;padding:5px 11px;border-radius:8px;letter-spacing:.5px;">1c</span>
+      <span style="font-size:13px;font-weight:700;color:#1C1917;letter-spacing:.3px;">MANAGER · REVIEW REQUEST</span>
+      <span style="font-size:12px;color:#8A817A;">Approve or reject with a comment</span>
+    </div>
+
+    <div style="display:flex;width:1300px;min-height:820px;background:#F7F4F0;border-radius:20px;overflow:hidden;border:1px solid #E1DAD1;box-shadow:0 30px 60px -30px rgba(60,40,20,.28);">
+      <aside style="width:250px;background:#1C1917;padding:26px 18px;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;gap:11px;padding:0 8px 26px;">
+          <div style="width:34px;height:34px;border-radius:10px;background:#EA580C;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px;">V</div>
+          <span style="font-size:17px;font-weight:800;letter-spacing:-0.4px;color:#FFFFFF;">VacaFlow</span>
+        </div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#78716C;padding:0 8px 12px;">Manager</div>
+        <nav style="display:flex;flex-direction:column;gap:4px;">
+          <a href="#" style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;font-size:13px;color:#D6D3D1;text-decoration:none;font-weight:500;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a>
+          <a href="#" style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;font-size:13px;background:#EA580C;color:#fff;text-decoration:none;font-weight:700;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Review Queue</a>
+        </nav>
+        <div style="margin-top:auto;padding:14px;background:#292524;border-radius:14px;">
+          <div style="font-size:26px;font-weight:800;color:#fff;">3</div>
+          <div style="font-size:11px;color:#A8A29E;">requests awaiting your review</div>
+        </div>
+      </aside>
+
+      <main style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <header style="display:flex;align-items:center;justify-content:space-between;padding:20px 36px;border-bottom:1px solid #EFEAE3;background:#FFFFFF;">
+          <a href="#" style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#78716C;text-decoration:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>Back to queue</a>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:right;"><div style="font-size:12px;font-weight:700;color:#1C1917;">James Parker</div><div style="font-size:11px;color:#A8A29E;">Manager</div></div>
+            <div style="width:38px;height:38px;border-radius:11px;background:#1C1917;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;">JP</div>
+          </div>
+        </header>
+
+        <div style="padding:34px 40px;display:grid;grid-template-columns:1fr 1.5fr;gap:28px;align-items:start;">
+          <!-- left: employee card -->
+          <div style="background:#FFFFFF;border:1px solid #EDE7DF;border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:20px;">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="width:52px;height:52px;border-radius:14px;background:#FBF3EC;color:#C2410C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;">AM</div>
+              <div>
+                <div style="font-size:16px;font-weight:800;color:#1C1917;letter-spacing:-0.3px;">Alex Morgan</div>
+                <div style="font-size:12px;color:#B0A99F;">Design Team · Employee</div>
+              </div>
+            </div>
+            <div style="height:1px;background:#F2ECE4;"></div>
+            <div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#A8A29E;margin-bottom:7px;">Absence type</div>
+              <div style="display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#1C1917;"><span style="font-size:18px;">🏝️</span>Vacation <span style="font-size:11px;color:#B0A99F;font-weight:500;">(VAC)</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+              <div>
+                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#A8A29E;margin-bottom:6px;">Start</div>
+                <div style="font-size:14px;font-weight:700;color:#1C1917;">Aug 24, 2026</div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#A8A29E;margin-bottom:6px;">End</div>
+                <div style="font-size:14px;font-weight:700;color:#1C1917;">Aug 28, 2026</div>
+              </div>
+            </div>
+            <div style="padding:13px 15px;background:#FBF7F2;border:1px solid #F0E9DF;border-radius:12px;display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:12px;color:#78716C;">Total absence</span>
+              <span style="font-size:14px;font-weight:800;color:#C2410C;">5 working days</span>
+            </div>
+            <div style="font-size:11px;color:#B0A99F;">Submitted Jul 21, 2026 · 09:12</div>
+          </div>
+
+          <!-- right: reason + decision -->
+          <div style="display:flex;flex-direction:column;gap:22px;">
+            <div>
+              <h1 style="margin:0 0 6px;font-size:25px;font-weight:800;letter-spacing:-0.6px;color:#1C1917;">Review request</h1>
+              <p style="margin:0;font-size:13px;color:#78716C;">Read the request and record your decision. The employee will see your comment.</p>
+            </div>
+
+            <div style="background:#FFFFFF;border:1px solid #EDE7DF;border-radius:16px;padding:24px;">
+              <div style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#A8A29E;margin-bottom:10px;">Reason from employee</div>
+              <p style="margin:0;font-size:14px;line-height:1.75;color:#44403C;">Family vacation in Spain. I will be visiting my parents on the coast and taking a proper break to come back refreshed. Planned well ahead so my tasks can be handed over cleanly.</p>
+            </div>
+
+            <div style="background:#FFFFFF;border:1px solid #EDE7DF;border-radius:16px;padding:24px;">
+              <label style="display:block;font-size:12px;font-weight:700;color:#44403C;margin-bottom:10px;">Your comment <span style="color:#B0A99F;font-weight:500;">(optional)</span></label>
+              <div style="border:1px solid #E4DDD3;border-radius:12px;padding:14px 16px;min-height:96px;font-size:13px;color:#57534E;line-height:1.7;background:#FBFAF8;">Enjoy your break — please make sure the Q3 handover doc is shared with the team before you leave.<span style="display:inline-block;width:2px;height:16px;background:#EA580C;vertical-align:middle;margin-left:2px;border-radius:2px;"></span></div>
+              <div style="display:flex;gap:12px;margin-top:20px;">
+                <a href="#" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:9px;background:#16A34A;color:#fff;font-size:14px;font-weight:700;padding:15px;border-radius:12px;text-decoration:none;box-shadow:0 8px 20px -8px rgba(22,163,74,.55);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Approve</a>
+                <a href="#" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:9px;background:#FFFFFF;color:#B91C1C;font-size:14px;font-weight:700;padding:15px;border-radius:12px;text-decoration:none;border:1px solid #F0CFCF;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Reject</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const mk = (o) => ({
+      ...o,
+      isDraft: o.status === 'Draft',
+      isSubmitted: o.status === 'Submitted',
+      isApproved: o.status === 'Approved',
+      isRejected: o.status === 'Rejected',
+      isCancelled: o.status === 'Cancelled',
+    });
+    const requests = [
+      { id: 'RQ-1042', type: 'Vacation',    emoji: '🏝️', dates: 'Aug 12 – Aug 16, 2026', days: 5, created: 'Jul 20, 2026', status: 'Submitted' },
+      { id: 'RQ-1038', type: 'Sick Leave',  emoji: '🤒', dates: 'Jul 07 – Jul 08, 2026', days: 2, created: 'Jul 06, 2026', status: 'Approved' },
+      { id: 'RQ-1035', type: 'Vacation',    emoji: '🏝️', dates: 'Aug 24 – Aug 28, 2026', days: 5, created: 'Jul 20, 2026', status: 'Draft' },
+      { id: 'RQ-1021', type: 'Personal',    emoji: '📋', dates: 'Jun 30, 2026',           days: 1, created: 'Jun 18, 2026', status: 'Rejected' },
+      { id: 'RQ-1009', type: 'Vacation',    emoji: '🏝️', dates: 'May 12 – May 16, 2026', days: 5, created: 'Apr 28, 2026', status: 'Cancelled' },
+    ].map(mk);
+    return { requests };
+  }
+}
+</script>
+</body>
+</html>

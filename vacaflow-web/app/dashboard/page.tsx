@@ -2,31 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-
-interface CurrentUser {
-  id: string;
-  fullName: string;
-  email: string;
-  role: string;
-}
+import AppLayout from '@/components/layout/AppLayout';
+import { userApi } from '@/lib/api';
+import { User } from '@/lib/types';
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/users/me', {
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch user');
-        }
-
-        const data = await response.json();
-        setUser(data);
+        const userData = await userApi.getCurrentUser();
+        setUser(userData);
       } catch (err) {
         console.error('Failed to fetch current user:', err);
       } finally {
@@ -39,58 +27,82 @@ export default function DashboardPage() {
 
   const isManager = user?.role === 'Manager';
 
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="text-center py-8">
+          <p className="text-text-muted">Loading...</p>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard</h1>
-            {!loading && user && (
-              <p className="text-gray-600">
-                Welcome, <span className="font-semibold">{user.fullName}</span> ({user.role})
-              </p>
-            )}
-          </div>
-          <a
-            href="/logout"
-            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md transition"
-          >
-            Sign Out
-          </a>
+    <AppLayout>
+      <div>
+        {/* Header */}
+        <div className="mb-12">
+          <h1 className="text-h1 font-bold text-text-primary mb-2">Dashboard</h1>
+          {user && (
+            <p className="text-sm text-text-muted">
+              Welcome, <span className="font-bold text-text-primary">{user.fullName}</span> ({user.role})
+            </p>
+          )}
         </div>
 
+        {/* Quick Actions Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Employee Links */}
-          <Link
-            href="/requests"
-            className="bg-white hover:shadow-lg rounded-lg p-6 border border-gray-200 hover:border-blue-400 transition"
-          >
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">My Requests</h2>
-            <p className="text-gray-600">View, create, and manage your absence requests</p>
+          {/* My Requests Card */}
+          <Link href="/requests">
+            <div className="bg-bg-surface border border-border-warm rounded-card p-6 hover:shadow-frame transition cursor-pointer h-full">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-12 h-12 bg-bg-orange-tint rounded-card flex items-center justify-center text-xl">
+                  📋
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-h3 font-bold text-text-primary mb-2">My Requests</h2>
+                  <p className="text-sm text-text-muted">
+                    View, create, and manage your absence requests
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm font-bold text-brand-orange-hover">View requests ›</p>
+            </div>
           </Link>
 
-          {/* Manager Links */}
+          {/* Manager Review Queue Card */}
           {isManager && (
-            <Link
-              href="/manager/queue"
-              className="bg-white hover:shadow-lg rounded-lg p-6 border border-gray-200 hover:border-green-400 transition"
-            >
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Review Queue</h2>
-              <p className="text-gray-600">Review and approve/reject pending requests from your team</p>
+            <Link href="/manager/queue">
+              <div className="bg-bg-surface border border-border-warm rounded-card p-6 hover:shadow-frame transition cursor-pointer h-full">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 bg-status-submitted-bg rounded-card flex items-center justify-center text-xl">
+                    ✓
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-h3 font-bold text-text-primary mb-2">Review Queue</h2>
+                    <p className="text-sm text-text-muted">
+                      Review and approve/reject pending requests from your team
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm font-bold text-status-submitted-text">Review requests ›</p>
+              </div>
             </Link>
           )}
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">Getting Started</h3>
-          <ul className="text-blue-800 space-y-1 list-disc list-inside">
+        {/* Getting Started Card */}
+        <div className="bg-bg-warm-tint border border-border-warm rounded-card p-6">
+          <h3 className="text-h3 font-bold text-text-primary mb-4">Getting Started</h3>
+          <ul className="text-sm text-text-body space-y-2 list-inside list-disc">
             <li>Create a new absence request by clicking "My Requests"</li>
-            <li>Save requests as drafts before submitting</li>
-            <li>Submit requests for your manager's approval</li>
+            <li>Save requests as drafts before submitting for approval</li>
+            <li>Submit requests for your manager's review</li>
             {isManager && <li>Review submitted requests from your team members</li>}
+            {isManager && <li>Approve or reject requests with optional comments</li>}
           </ul>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
