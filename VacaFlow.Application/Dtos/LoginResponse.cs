@@ -1,6 +1,6 @@
 namespace VacaFlow.Application.Dtos;
 
-public class RegisterResponse
+public class LoginResponse
 {
     public string Id { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;

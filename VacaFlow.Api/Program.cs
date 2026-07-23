@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using VacaFlow.Api;
 using VacaFlow.Api.Endpoints;
+using VacaFlow.Api.Identity;
 using VacaFlow.Api.Middleware;
 using VacaFlow.Application.Dtos;
 using VacaFlow.Application.Exceptions;
+using VacaFlow.Application.Services;
 using VacaFlow.Domain;
 using VacaFlow.Infrastructure.Extensions;
 
@@ -41,6 +43,9 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddInfrastructure(connectionString);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

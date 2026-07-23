@@ -29,7 +29,27 @@ public class AuthService : IAuthService
 
         return new RegisterResponse
         {
-            Id = employee.Id,
+            Id = employee.Id.ToString(),
+            FullName = employee.FullName,
+            Email = employee.Email,
+            Role = employee.Role.ToString()
+        };
+    }
+
+    public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    {
+        ValidateLoginRequest(request);
+
+        var employee = await _userRepository.GetByEmailAsync(request.Email.ToLowerInvariant(), cancellationToken);
+        if (employee == null)
+            throw new ValidationException("Invalid email or password", "INVALID_CREDENTIALS");
+
+        if (!employee.VerifyPassword(request.Password))
+            throw new ValidationException("Invalid email or password", "INVALID_CREDENTIALS");
+
+        return new LoginResponse
+        {
+            Id = employee.Id.ToString(),
             FullName = employee.FullName,
             Email = employee.Email,
             Role = employee.Role.ToString()
@@ -41,6 +61,15 @@ public class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(request.FullName))
             throw new ValidationException("Full name is required", "MISSING_FULL_NAME");
 
+        if (string.IsNullOrWhiteSpace(request.Email))
+            throw new ValidationException("Email is required", "MISSING_EMAIL");
+
+        if (string.IsNullOrWhiteSpace(request.Password))
+            throw new ValidationException("Password is required", "MISSING_PASSWORD");
+    }
+
+    private static void ValidateLoginRequest(LoginRequest request)
+    {
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new ValidationException("Email is required", "MISSING_EMAIL");
 
