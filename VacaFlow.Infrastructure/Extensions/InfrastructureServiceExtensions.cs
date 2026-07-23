@@ -18,7 +18,9 @@ public static class InfrastructureServiceExtensions
             options.UseSqlite(connectionString));
 
         services.AddScoped<IUserRepository, EfCoreUserRepository>();
+        services.AddScoped<IAbsenceTypeRepository, EfCoreAbsenceTypeRepository>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IAbsenceTypeService, AbsenceTypeService>();
 
         return services;
     }
