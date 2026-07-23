@@ -2,7 +2,10 @@
 
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { authApi } from '@/lib/api';
+import Link from 'next/link';
+import AuthShell from '@/components/layout/AuthShell';
+import TextInput from '@/components/forms/TextInput';
+import ActionButton from '@/components/ui/ActionButton';
 
 interface LoginRequest {
   email: string;
@@ -37,10 +40,6 @@ export default function LoginPage() {
         throw new Error('Password is required');
       }
 
-      // For testing: demo manager account
-      const demoEmail = 'james.parker@igs.com';
-      const demoPassword = 'Demo1234!';
-
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: {
@@ -58,7 +57,6 @@ export default function LoginPage() {
         throw new Error(error.message || 'Login failed');
       }
 
-      // Redirect to dashboard on success
       router.push('/dashboard');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed';
@@ -69,72 +67,62 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Sign In</h1>
-        <p className="text-gray-600 mb-6">Access your absence requests</p>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-800 text-sm">{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="you@example.com"
-              disabled={loading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Your password"
-              disabled={loading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-2 rounded-md transition"
+    <AuthShell
+      title="Sign in"
+      subtitle="Access your absence requests."
+      footer={
+        <>
+          Don&apos;t have an account?{' '}
+          <Link
+            href="/register"
+            className="text-brand-orange-hover hover:text-brand-orange-deep font-bold transition"
           >
-            {loading ? 'Signing In...' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="mt-6 p-4 bg-blue-50 rounded-md border border-blue-200">
-          <p className="text-xs font-medium text-blue-900 mb-2">Demo Account:</p>
-          <p className="text-xs text-blue-700">Email: james.parker@igs.com</p>
-          <p className="text-xs text-blue-700">Password: Demo1234!</p>
-        </div>
-
-        <p className="text-center text-gray-600 text-sm mt-6">
-          Don't have an account?{' '}
-          <a href="/register" className="text-blue-600 hover:underline font-medium">
             Sign up
-          </a>
-        </p>
+          </Link>
+        </>
+      }
+    >
+      {error && (
+        <div className="mb-6 p-4 bg-status-rejected-bg border border-status-rejected-border rounded-card">
+          <p className="text-sm text-status-rejected-text">{error}</p>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <TextInput
+          label="Email Address"
+          type="email"
+          id="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="you@example.com"
+          disabled={loading}
+          autoComplete="email"
+        />
+
+        <TextInput
+          label="Password"
+          type="password"
+          id="password"
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          placeholder="Your password"
+          disabled={loading}
+          autoComplete="current-password"
+        />
+
+        <ActionButton variant="primary" type="submit" loading={loading} disabled={loading} fullWidth>
+          Sign In
+        </ActionButton>
+      </form>
+
+      <div className="mt-6 p-4 bg-bg-warm-tint border border-border-warm rounded-card">
+        <p className="text-label uppercase text-text-faint mb-2">Demo Account</p>
+        <p className="text-xs text-text-body">Email: james.parker@igs.com</p>
+        <p className="text-xs text-text-body">Password: Demo1234!</p>
       </div>
-    </div>
+    </AuthShell>
   );
 }

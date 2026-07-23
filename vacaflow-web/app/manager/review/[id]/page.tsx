@@ -90,7 +90,7 @@ export default function ManagerReviewPage() {
 
   if (loading) {
     return (
-      <AppLayout isDarkSidebar={true} backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
+      <AppLayout backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
         <div className="text-center py-8">
           <p className="text-text-muted">Loading...</p>
         </div>
@@ -100,7 +100,7 @@ export default function ManagerReviewPage() {
 
   if (!request || !employee) {
     return (
-      <AppLayout isDarkSidebar={true} backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
+      <AppLayout backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
         <p className="text-status-rejected-text">Request not found</p>
       </AppLayout>
     );
@@ -109,7 +109,7 @@ export default function ManagerReviewPage() {
   const workingDays = calculateWorkingDays(request.startDate, request.endDate);
 
   return (
-    <AppLayout isDarkSidebar={true} backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
+    <AppLayout backLink={{ label: 'Back to queue', href: '/manager/queue' }}>
       <div className="grid grid-cols-[1fr_1.5fr] gap-7">
         {/* Left Column - Employee Card */}
         <div className="bg-bg-surface border border-border-warm rounded-card p-6">

@@ -9,18 +9,13 @@ import Header from './Header';
 
 interface AppLayoutProps {
   children: ReactNode;
-  isDarkSidebar?: boolean;
   backLink?: {
     label: string;
     href: string;
   };
 }
 
-export default function AppLayout({
-  children,
-  isDarkSidebar = false,
-  backLink,
-}: AppLayoutProps) {
+export default function AppLayout({ children, backLink }: AppLayoutProps) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,26 +39,24 @@ export default function AppLayout({
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-bg-page flex items-center justify-center">
-        <p className="text-text-muted">Loading...</p>
+        <div className="flex items-center gap-3 text-text-muted">
+          <div className="w-5 h-5 border-2 border-border-warm-alt border-t-brand-orange rounded-full animate-spin" />
+          <p className="text-sm">Loading…</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-bg-page flex items-center justify-center p-4">
-      <div
-        className={`
-          w-full max-w-app-frame bg-bg-app rounded-frame border border-border-warm
-          shadow-frame flex min-h-[820px] overflow-hidden
-        `}
-      >
+      <div className="w-full max-w-app-frame bg-bg-app rounded-frame border border-border-warm shadow-frame flex h-[calc(100vh-2rem)] max-h-[880px] min-h-[560px] overflow-hidden">
         {/* Sidebar */}
-        <Sidebar user={user} isDarkMode={isDarkSidebar} />
+        <Sidebar user={user} />
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
           {/* Header */}
-          <Header user={user} backLink={backLink} isDarkSidebar={isDarkSidebar} />
+          <Header user={user} backLink={backLink} />
 
           {/* Content */}
           <div className="flex-1 bg-bg-surface overflow-y-auto">
