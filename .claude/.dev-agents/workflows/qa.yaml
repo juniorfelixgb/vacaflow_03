@@ -1,0 +1,916 @@
+---
+# QA Orchestrator Workflow - Automated Test Planning, Implementation, and Execution
+# This workflow coordinates multiple QA agents to design, build, execute, and validate tests
+
+workflow_name: "QA_Test_Implementation_And_Validation"
+version: "1.1.0"
+description: |
+  Automated workflow for E2E test creation and validation using the project's E2E testing tool.
+  Coordinates E2E_Plan, E2E_Generate, QA_Orchestrator (executor), and E2E_Heal agents.
+  Version 1.1.0: Fixed blind spots, added error handling, validation, and safety checks.
+  
+# Global workflow variables - accessible across all phases
+variables:
+  # GLOBAL: Feedback verbosity level
+  # Accepted values: "full" | "limited" | "minimal"
+  # Default: "limited"
+  # Propagated to all sub-agents (E2E_Plan, E2E_Generate, E2E_Heal)
+  feedback_level: "limited"
+
+  # GLOBAL: Execution mode - user intervention control
+  # Accepted values: "unattended" | "supervised" | "semi"
+  # Default: "semi"
+  # Propagated to all sub-agents (E2E_Plan, E2E_Generate, E2E_Heal)
+  execution_mode: "semi"
+
+  # Input variables
+  requirement_file_path: null           # Path to BRD or requirement document from Coder
+  requirement_content: null             # Full content of the requirement
+  feature_name: null                    # Name of the feature being tested
+  
+  # Planning phase outputs
+  test_plan_content: null               # Generated test plan from E2E_Plan
+  test_plan_file_path: null            # Saved path to test plan document
+  test_cases_list: []                   # Array of individual test cases identified
+  
+  # Implementation phase outputs
+  test_file_path: null                  # Path to generated E2E test file
+  test_file_content: null               # Content of the generated test
+  test_suite_name: null                 # Name of the test suite
+  
+  # Execution phase variables
+  execution_iteration_counter: 0        # Tracks retry attempts for failed tests
+  test_execution_result: null           # Pass/Fail status from execution
+  test_execution_feedback: null         # Detailed feedback from test execution
+  test_execution_logs: null             # Console/error logs from test run
+  
+  # Quality gates
+  test_correction_attempts: 0           # Current correction attempt
+  test_marked_as_skip: false            # Flag if test was marked to skip
+  test_execution_success: false         # Final success status
+  
+  # Error tracking variables
+  workflow_failed_at_phase: null        # Phase where workflow failed (if applicable)
+  failure_reason: null                  # Detailed failure reason
+  correction_failed: false              # Flag if E2E_Heal correction failed
+  save_failed: false                    # Flag if file save operation failed
+  unsaved_corrections: null             # Corrected code that failed to save
+  
+  # Final outputs
+  final_report: null                    # Comprehensive test implementation report
+  tests_created_count: 0                # Number of tests successfully created
+  tests_passed_count: 0                 # Number of tests that passed
+  tests_skipped_count: 0                # Number of tests marked as skip
+
+# Workflow Configuration
+config:
+  max_test_correction_attempts: 3       # Maximum retries for test correction
+  auto_skip_on_max_failures: true       # Auto-mark test as skip after max failures
+  save_test_plans_to: "docs/test-suites/"
+  save_test_files_to: "[e2e-tests-dir]/"
+  parallel_execution: false             # Execute tests sequentially
+
+# =======================================================================================
+# PHASE 1: REQUIREMENT ANALYSIS & PLANNING
+# =======================================================================================
+phases:
+  - phase_id: 1
+    phase_name: "Requirement Analysis & Test Planning"
+    description: |
+      Analyze the requirement provided by Coder and generate comprehensive test plan.
+      E2E_Plan agent creates test strategy, identifies test cases, and defines acceptance criteria.
+    
+    steps:
+      # Step 1.1: Load and validate requirement document
+      - step_id: 1.1
+        step_name: "Load Requirement Document"
+        type: "action"
+        agent: "QA_Orchestrator"
+        action: "read_requirement_file"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Read the requirement document that was used by Coder.
+          Validate that it contains:
+          - Feature description
+          - User stories
+          - Acceptance criteria
+          - Technical specifications (if available)
+          
+          User will provide the path or content of the requirement.
+          Store the full content for E2E_Plan analysis.
+        
+        on_success:
+          store_variables:
+            - requirement_file_path
+            - requirement_content
+            - feature_name
+          next_step: 1.2
+        
+        on_failure:
+          action: "report_error"
+          message: "Failed to load requirement document. Ensure valid file path provided."
+          store_variables:
+            - name: workflow_failed_at_phase
+              value: 1
+            - name: failure_reason
+              value: "Failed to load requirement document"
+          next_phase: 4
+      
+      # Step 1.2: Call E2E_Plan to generate test plan
+      - step_id: 1.2
+        step_name: "Generate Test Plan"
+        type: "action"
+        agent: "E2E_Plan"
+        action: "create_test_plan"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Based on the following requirement, create a comprehensive test plan for E2E testing.
+          
+          REQUIREMENT DOCUMENT:
+          {{requirement_content}}
+          
+          FEATURE NAME: {{feature_name}}
+          
+          YOUR TASK:
+          1. Analyze the requirement and identify all testable scenarios
+          2. Create test cases covering:
+             - Happy path scenarios
+             - Edge cases
+             - Error handling and validation
+             - Permission/authorization checks
+             - UI/UX interactions
+             - Data validation
+          3. Define test data requirements
+          4. Specify expected outcomes for each test case
+          5. Identify test dependencies and prerequisites
+          6. Recommend test execution order
+          
+          OUTPUT FORMAT:
+          Generate a structured test plan document in Markdown format with:
+          - Test Suite Name
+          - Test Objectives
+          - Scope (In-scope and Out-of-scope)
+          - Test Environment Requirements
+          - Test Cases (numbered, with description, steps, and expected results)
+          - Test Data Requirements
+          - Dependencies and Prerequisites
+          
+          Return the complete test plan content.
+        
+        on_success:
+          store_variables:
+            - test_plan_content
+            - test_cases_list
+            - test_suite_name
+          next_step: 1.3
+        
+        on_failure:
+          action: "report_error"
+          message: "E2E_Plan failed to generate test plan. Review requirement clarity."
+          retry_policy:
+            max_retries: 1
+            retry_instruction: "Simplify the requirement and focus on core functionality test cases."
+          store_variables:
+            - name: workflow_failed_at_phase
+              value: 1
+            - name: failure_reason
+              value: "E2E_Plan failed to generate test plan"
+          next_phase: 4
+      
+      # Step 1.3: Save Test Plan to appropriate folder
+      - step_id: 1.3
+        step_name: "Save Test Plan Document"
+        type: "action"
+        agent: "QA_Orchestrator"
+        action: "save_test_plan_file"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Save the generated test plan to the appropriate folder structure.
+          
+          TEST PLAN CONTENT:
+          {{test_plan_content}}
+          
+          SAVE TO: {{config.save_test_plans_to}}{{feature_name}}_Test_Plan.md
+          
+          Create folder structure if it doesn't exist.
+          Return the full file path where test plan was saved.
+        
+        on_success:
+          store_variables:
+            - test_plan_file_path
+          next_step: 1.4
+        
+        on_failure:
+          action: "report_error"
+          message: "Failed to save test plan file. Check folder permissions."
+          store_variables:
+            - name: workflow_failed_at_phase
+              value: 1
+            - name: failure_reason
+              value: "Failed to save test plan file"
+            - name: save_failed
+              value: true
+          next_phase: 4
+      
+      # Step 1.4: Report Planning Phase Completion
+      - step_id: 1.4
+        step_name: "Planning Phase Report"
+        type: "report"
+        report_template: |
+          ✅ PHASE 1 COMPLETED: Test Planning
+          =====================================
+          Feature: {{feature_name}}
+          Test Plan Saved: {{test_plan_file_path}}
+          Test Cases Identified: {{test_cases_list.length}}
+          Test Suite Name: {{test_suite_name}}
+          
+          Next: Implementation Phase
+        
+        on_success:
+          next_phase: 2
+        
+        on_failure:
+          action: "log_and_continue"
+          message: "Planning phase report generation failed, but continuing workflow..."
+          next_phase: 2
+
+# =======================================================================================
+# PHASE 2: TEST IMPLEMENTATION
+# =======================================================================================
+  - phase_id: 2
+    phase_name: "Test Implementation"
+    description: |
+      Generate E2E test files based on the approved test plan.
+      E2E_Generate creates executable test code following project standards.
+    
+    steps:
+      # Step 2.0: Validate Prerequisites
+      - step_id: 2.0
+        step_name: "Validate Phase 2 Prerequisites"
+        type: "validation"
+        description: "Ensure all required data from Phase 1 is available"
+        validations:
+          - variable: test_plan_content
+            condition: "!= null && length > 0"
+            error_message: "Test plan content is empty or null"
+          - variable: test_cases_list
+            condition: "length > 0"
+            error_message: "No test cases identified in test plan"
+          - variable: feature_name
+            condition: "!= null && length > 0"
+            error_message: "Feature name is missing"
+        
+        on_success:
+          next_step: 2.1
+        
+        on_failure:
+          action: "validation_failed"
+          message: "Phase 2 prerequisites validation failed. Cannot proceed with test implementation."
+          store_variables:
+            - name: workflow_failed_at_phase
+              value: 2
+            - name: failure_reason
+              value: "Validation failed - missing required data from Phase 1"
+          next_phase: 4
+      
+      # Step 2.1: Call E2E_Generate to implement tests
+      - step_id: 2.1
+        step_name: "Generate E2E Test Code"
+        type: "action"
+        agent: "E2E_Generate"
+        action: "implement_playwright_tests"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Based on the approved test plan, generate E2E test code.
+          
+          TEST PLAN:
+          {{test_plan_content}}
+          
+          TEST CASES TO IMPLEMENT:
+          {{test_cases_list}}
+          
+          REQUIREMENTS:
+          1. Use the project's E2E testing tool and its test framework
+          2. Follow project's existing E2E test patterns and conventions
+          3. Implement proper page object models if needed
+          4. Include setup and teardown logic
+          5. Add descriptive test names and comments
+          6. Implement waiting strategies (avoid hard waits)
+          7. Use proper assertions with meaningful error messages
+          8. Handle async operations correctly
+          9. Add test tags for categorization (e.g., @smoke, @regression)
+          10. Follow AAA pattern: Arrange, Act, Assert
+
+          PROJECT CONTEXT:
+          - Framework: the project's E2E testing tool
+          - Test Location: [e2e-tests-dir]/
+          - Project Structure: the project's frontend and backend stack
+          - Authentication: the project's authentication mechanism
+          
+          OUTPUT:
+          Return the complete test file content with all test cases implemented.
+          Include necessary imports, fixtures, and helper functions.
+        
+        on_success:
+          store_variables:
+            - test_file_content
+            - tests_created_count
+          next_step: 2.2
+        
+        on_failure:
+          action: "report_error"
+          message: "E2E_Generate failed to implement tests. Review test plan complexity."
+          retry_policy:
+            max_retries: 1
+            retry_instruction: "Focus on implementing core test cases first. Simplify complex scenarios."
+          store_variables:
+            - name: workflow_failed_at_phase
+              value: 2
+            - name: failure_reason
+              value: "E2E_Generate failed to implement tests"
+          next_phase: 4
+      
+      # Step 2.2: Save Test File to appropriate folder
+      - step_id: 2.2
+        step_name: "Save E2E Test File"
+        type: "action"
+        agent: "QA_Orchestrator"
+        action: "save_test_file"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Save the generated E2E test file to the E2E test folder.
+          
+          TEST FILE CONTENT:
+          {{test_file_content}}
+          
+          SAVE TO: {{config.save_test_files_to}}{{feature_name}}.[test-spec-ext]
+          
+          Ensure proper folder structure and file naming convention.
+          Return the full file path where test was saved.
+        
+        on_success:
+          store_variables:
+            - test_file_path
+          next_step: 2.3
+        
+        on_failure:
+          action: "report_error"
+          message: "Failed to save test file. Check folder permissions and path."
+          store_variables:
+            - name: workflow_failed_at_phase
+              value: 2
+            - name: failure_reason
+              value: "Failed to save test file"
+            - name: save_failed
+              value: true
+          next_phase: 4
+      
+      # Step 2.3: Report Implementation Phase Completion
+      - step_id: 2.3
+        step_name: "Implementation Phase Report"
+        type: "report"
+        report_template: |
+          ✅ PHASE 2 COMPLETED: Test Implementation
+          ==========================================
+          Test File Created: {{test_file_path}}
+          Tests Implemented: {{tests_created_count}}
+          
+          Next: Test Execution & Validation Phase
+        
+        on_success:
+          next_phase: 3
+        
+        on_failure:
+          action: "log_and_continue"
+          message: "Implementation phase report generation failed, but continuing workflow..."
+          next_phase: 3
+
+# =======================================================================================
+# PHASE 3: TEST EXECUTION & CORRECTION LOOP
+# =======================================================================================
+  - phase_id: 3
+    phase_name: "Test Execution & Correction"
+    description: |
+      Execute generated tests and enter correction loop if failures occur.
+      QA_Orchestrator runs tests, E2E_Heal fixes issues, with max 3 retry attempts.
+    
+    max_iterations: 3
+    
+    steps:
+      # Step 3.1: Execute E2E Tests
+      - step_id: 3.1
+        step_name: "Execute E2E Test"
+        type: "action"
+        agent: "QA_Orchestrator"
+        action: "run_playwright_tests"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Execute the generated E2E test file and provide detailed feedback.
+          
+          TEST FILE: {{test_file_path}}
+          
+          EXECUTION REQUIREMENTS:
+          1. Run the test using the E2E test runner
+          2. Capture console output, errors, and stack traces
+          3. Record test execution time
+          4. Capture screenshots on failure
+          5. Provide detailed error messages with line numbers
+          6. Identify the specific assertion or step that failed
+          
+          EXECUTION COMMAND:
+          npx playwright test {{test_file_path}} --reporter=list
+          
+          OUTPUT FORMAT:
+          Return a JSON object with:
+          {
+            "status": "PASS" | "FAIL",
+            "total_tests": <number>,
+            "passed": <number>,
+            "failed": <number>,
+            "execution_time_ms": <number>,
+            "failures": [
+              {
+                "test_name": "<test name>",
+                "error_message": "<error>",
+                "stack_trace": "<stack>",
+                "screenshot_path": "<path>",
+                "failure_line": <line_number>
+              }
+            ],
+            "console_logs": "<logs>",
+            "feedback": "<detailed analysis of why test failed and what needs fixing>"
+          }
+        
+        on_success:
+          store_variables:
+            - test_execution_result
+            - test_execution_feedback
+            - test_execution_logs
+            - tests_passed_count
+          next_step: 3.2
+        
+        on_failure:
+          action: "report_error"
+          message: "QA_Executor failed to run tests. Check test environment setup."
+          retry_policy:
+            max_retries: 1
+            retry_instruction: "Verify the E2E testing tool is installed and test file syntax is valid."
+          store_variables:
+            - name: workflow_failed_at_phase
+              value: 3
+            - name: failure_reason
+              value: "QA_Executor failed to run tests"
+            - name: test_marked_as_skip
+              value: true
+            - name: tests_skipped_count
+              value: 1
+          next_phase: 4
+      
+      # Step 3.2: Decision - Did test pass or fail?
+      - step_id: 3.2
+        step_name: "Evaluate Test Result"
+        type: "decision"
+        description: "Determine if test passed or needs correction"
+        
+        conditions:
+          # Condition 1: Test PASSED - Exit loop and proceed
+          - condition: "{{test_execution_result.status}} == 'PASS'"
+            action: "exit_loop"
+            store_variables:
+              - name: test_execution_success
+                value: true
+            next_phase: 4
+          
+          # Condition 2: Test FAILED but within retry limit - Attempt correction
+          - condition: "{{test_execution_result.status}} == 'FAIL' && {{execution_iteration_counter}} < {{config.max_test_correction_attempts}}"
+            action: "continue_loop"
+            increment: "execution_iteration_counter"
+            next_step: 3.3
+          
+          # Condition 3: Test FAILED and max retries reached - Mark as skip
+          - condition: "{{test_execution_result.status}} == 'FAIL' && {{execution_iteration_counter}} >= {{config.max_test_correction_attempts}}"
+            action: "mark_as_skip"
+            store_variables:
+              - name: test_marked_as_skip
+                value: true
+              - name: tests_skipped_count
+                value: 1
+            next_phase: 4
+      
+      # Step 3.3: Call E2E_Heal to fix the failing test
+      - step_id: 3.3
+        step_name: "Correct Failing Test"
+        type: "action"
+        agent: "E2E_Heal"
+        action: "fix_test_failures"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Analyze the test failure and fix the E2E test code.
+          
+          RETRY ATTEMPT: {{execution_iteration_counter}} / {{config.max_test_correction_attempts}}
+          
+          CURRENT TEST FILE:
+          {{test_file_content}}
+          
+          EXECUTION FEEDBACK:
+          {{test_execution_feedback}}
+          
+          FAILURE DETAILS:
+          {{test_execution_result.failures}}
+          
+          ERROR LOGS:
+          {{test_execution_logs}}
+          
+          YOUR TASK:
+          1. Analyze the root cause of test failure
+          2. Identify whether issue is in:
+             - Test code logic
+             - Selectors (element not found)
+             - Timing/synchronization
+             - Assertions
+             - Test data
+             - Environment setup
+          3. Apply appropriate fix:
+             - Update selectors if elements changed
+             - Add proper wait conditions
+             - Fix assertion logic
+             - Adjust test data
+             - Update test flow
+          4. Ensure fix doesn't break other tests
+          5. Add comments explaining the fix
+          
+          COMMON FIXES:
+          - Replace fragile selectors with data-testid
+          - Add waitForSelector() for dynamic elements
+          - Use proper role/semantic locators provided by the E2E testing tool
+          - Fix race conditions with waitForLoadState()
+          - Update expected values based on actual application behavior
+          
+          OUTPUT:
+          Return the corrected complete test file content.
+          Include a brief explanation of what was fixed.
+        
+        on_success:
+          store_variables:
+            - test_file_content
+            - test_correction_attempts
+          next_step: 3.4
+        
+        on_failure:
+          action: "report_error"
+          message: "E2E_Heal failed to correct test. Manual intervention may be required."
+          store_variables:
+            - name: test_marked_as_skip
+              value: true
+            - name: tests_skipped_count
+              value: 1
+            - name: correction_failed
+              value: true
+            - name: failure_reason
+              value: "E2E_Heal failed to correct test after {{execution_iteration_counter}} attempts"
+          next_phase: 4
+      
+      # Step 3.4: Save Corrected Test File
+      - step_id: 3.4
+        step_name: "Save Corrected Test"
+        type: "action"
+        agent: "QA_Orchestrator"
+        action: "update_test_file"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Update the test file with corrected code.
+          
+          UPDATED TEST CONTENT:
+          {{test_file_content}}
+          
+          FILE PATH: {{test_file_path}}
+          
+          Overwrite existing file with corrections.
+          Add version comment indicating correction attempt number.
+        
+        retry_policy:
+          max_retries: 2
+          retry_instruction: "Retry file save operation. Check file permissions and disk space."
+        
+        on_success:
+          next_step: 3.5
+        
+        on_failure:
+          action: "report_error"
+          message: "Failed to save corrected test file after retries. Corrections will be lost."
+          store_variables:
+            - name: test_marked_as_skip
+              value: true
+            - name: tests_skipped_count
+              value: 1
+            - name: save_failed
+              value: true
+            - name: unsaved_corrections
+              value: "{{test_file_content}}"
+            - name: failure_reason
+              value: "Failed to save corrected test file"
+          next_phase: 4
+      
+      # Step 3.5: Report Correction Attempt
+      - step_id: 3.5
+        step_name: "Correction Attempt Report"
+        type: "report"
+        report_template: |
+          🔄 TEST CORRECTION ATTEMPT {{execution_iteration_counter}}
+          ============================================
+          Test File: {{test_file_path}}
+          Issue: {{test_execution_feedback}}
+          Fix Applied: {{test_correction_attempts}} corrections made
+          
+          Re-running test...
+        
+        on_success:
+          action: "loop_back"
+          loop_to_step: 3.1
+          safety_check:
+            condition: "{{execution_iteration_counter}} < {{config.max_test_correction_attempts}}"
+            on_violation:
+              action: "force_exit_loop"
+              message: "Safety limit reached - forcing exit from correction loop"
+              store_variables:
+                - name: test_marked_as_skip
+                  value: true
+                - name: tests_skipped_count
+                  value: 1
+              next_phase: 4
+        
+        on_failure:
+          action: "log_and_continue"
+          message: "Correction attempt report generation failed, but continuing loop..."
+          next_step: 3.1
+
+# =======================================================================================
+# PHASE 4: FINALIZATION & REPORTING
+# =======================================================================================
+  - phase_id: 4
+    phase_name: "Finalization & Reporting"
+    description: |
+      Generate final test implementation report.
+      Mark skipped tests if max retries exceeded.
+      Provide comprehensive summary of test creation process.
+    
+    steps:
+      # Step 4.1: Handle Skipped Tests (if applicable)
+      - step_id: 4.1
+        step_name: "Mark Test as Skip"
+        type: "action"
+        agent: "QA_Orchestrator"
+        action: "mark_test_skip"
+        optional: true
+        condition: "{{test_marked_as_skip}} == true || {{correction_failed}} == true || {{save_failed}} == true"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Update the test file to mark failing tests with .skip
+          
+          TEST FILE: {{test_file_path}}
+          FAILED TESTS: {{test_execution_result.failures}}
+          
+          For each failed test, add .skip:
+          test.skip('test name', async () => { ... })
+          
+          Add comment explaining why test was skipped:
+          // SKIPPED: Failed after {{config.max_test_correction_attempts}} correction attempts
+          // Last error: {{test_execution_feedback}}
+          // Requires manual investigation
+          
+          Save updated file and notify user.
+        
+        on_success:
+          next_step: 4.2
+        
+        on_skip:
+          next_step: 4.2
+      
+      # Step 4.2: Generate Final Report
+      - step_id: 4.2
+        step_name: "Generate Final Report"
+        type: "action"
+        agent: "QA_Orchestrator"
+        action: "generate_final_report"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Create comprehensive final report of test implementation process.
+          
+          Compile all information from previous phases:
+          - Requirement analyzed
+          - Test plan created
+          - Tests implemented
+          - Execution results
+          - Corrections applied
+          - Final status
+          
+          Generate detailed markdown report.
+        
+        on_success:
+          store_variables:
+            - final_report
+          next_step: 4.3
+      
+      # Step 4.3: Display Final Summary
+      - step_id: 4.3
+        step_name: "Final Summary Report"
+        type: "report"
+        report_template: |
+          ═══════════════════════════════════════════════════════════
+          🎯 QA WORKFLOW COMPLETED: {{feature_name}}
+          ═══════════════════════════════════════════════════════════
+          
+          {{#if workflow_failed_at_phase}}
+          ⚠️  WORKFLOW FAILED AT PHASE {{workflow_failed_at_phase}}
+          Reason: {{failure_reason}}
+          {{/if}}
+          
+          📋 PLANNING PHASE
+          ─────────────────────────────────────────────────────────
+          {{#if test_plan_file_path}}
+          ✓ Requirement Analyzed: {{requirement_file_path}}
+          ✓ Test Plan Generated: {{test_plan_file_path}}
+          ✓ Test Cases Identified: {{test_cases_list.length}}
+          {{else}}
+          ✗ Planning phase incomplete
+          {{/if}}
+          
+          💻 IMPLEMENTATION PHASE
+          ─────────────────────────────────────────────────────────
+          {{#if test_file_path}}
+          ✓ Test File Created: {{test_file_path}}
+          ✓ Tests Implemented: {{tests_created_count}}
+          {{else}}
+          ✗ Implementation phase incomplete
+          {{/if}}
+          
+          🧪 EXECUTION PHASE
+          ─────────────────────────────────────────────────────────
+          {{#if test_execution_result}}
+          Tests Passed: {{tests_passed_count}}
+          Tests Failed: {{test_execution_result.failed}}
+          Tests Skipped: {{tests_skipped_count}}
+          Correction Attempts: {{test_correction_attempts}}
+          {{else}}
+          ✗ Execution phase not reached or failed
+          {{/if}}
+          
+          📊 FINAL STATUS
+          ─────────────────────────────────────────────────────────
+          Overall Success: {{test_execution_success}}
+          Tests Marked as Skip: {{test_marked_as_skip}}
+          Correction Failed: {{correction_failed}}
+          Save Failed: {{save_failed}}
+          
+          {{#if test_marked_as_skip}}
+          ⚠️  WARNING: Some tests could not pass after {{config.max_test_correction_attempts}} attempts
+          Action Required: Manual review and correction needed
+          Failed Test Details: {{test_execution_feedback}}
+          {{/if}}
+          
+          {{#if save_failed}}
+          ⚠️  WARNING: File save operation failed
+          Unsaved corrections are stored in workflow variables
+          Action Required: Manually save the corrected test file
+          {{/if}}
+          
+          {{#if correction_failed}}
+          ⚠️  WARNING: E2E_Heal failed to correct test failures
+          Action Required: Manual intervention needed to fix test issues
+          {{/if}}
+          
+          {{#if test_execution_success}}
+          ✅ All tests implemented and passing successfully!
+          {{/if}}
+          
+          📁 DELIVERABLES
+          ─────────────────────────────────────────────────────────
+          {{#if test_plan_file_path}}
+          1. Test Plan: {{test_plan_file_path}}
+          {{/if}}
+          {{#if test_file_path}}
+          2. Test File: {{test_file_path}}
+          {{/if}}
+          {{#if test_execution_result}}
+          3. Execution Logs: Available in test output
+          {{/if}}
+          
+          ═══════════════════════════════════════════════════════════
+          Workflow completed at {{timestamp}}
+          ═══════════════════════════════════════════════════════════
+        
+        on_success:
+          action: "end_workflow"
+          message: "QA workflow execution complete. All deliverables generated."
+        
+        on_failure:
+          action: "end_workflow"
+          message: "QA workflow execution complete with errors. Report generation failed but workflow finished."
+
+# =======================================================================================
+# EXECUTION RULES
+# =======================================================================================
+execution_rules:
+  autonomous: false           # Require user validation at critical steps when execution_mode != unattended
+  user_validation_mode: "conditional" # Validation depends on execution_mode variable
+  stop_on_critical_failure: true
+  allow_retries: true
+  max_retry_attempts: 1
+  log_all_steps: true
+  track_execution_time: true
+  pause_on_validation: true   # When execution_mode = supervised, wait for user approval
+  feedback_level: limited     # Controls verbosity of agent responses: full | limited | minimal
+  execution_mode: semi        # Controls user intervention: unattended | supervised | semi
+
+# =======================================================================================
+# ERROR HANDLING & RECOVERY
+# =======================================================================================
+error_handling:
+  global_error_handler:
+    - error_type: "agent_timeout"
+      action: "retry"
+      max_retries: 2
+      message: "Agent timed out. Retrying with extended timeout..."
+    
+    - error_type: "agent_no_output"
+      action: "retry"
+      max_retries: 1
+      message: "Agent returned no output. Retrying with clarified instructions..."
+    
+    - error_type: "invalid_agent_output"
+      action: "report_and_stop"
+      message: "Agent output validation failed. Manual intervention required."
+    
+    - error_type: "file_system_error"
+      action: "report_and_stop"
+      message: "File system operation failed. Check permissions and paths."
+  
+  phase_specific_handlers:
+    - phase_id: 1
+      on_critical_failure:
+        action: "notify_user"
+        message: "Test planning failed. Cannot proceed without valid test plan."
+        exit_workflow: true
+    
+    - phase_id: 2
+      on_critical_failure:
+        action: "notify_user"
+        message: "Test implementation failed. Review test plan and requirements."
+        exit_workflow: true
+    
+    - phase_id: 3
+      on_max_retries_exceeded:
+        action: "mark_as_skip_and_continue"
+        message: "Max correction attempts reached. Marking test as skip and proceeding to report."
+        next_phase: 4
+
+# =======================================================================================
+# WORKFLOW METADATA
+# =======================================================================================
+metadata:
+  created_by: "QA_Orchestrator"
+  created_date: "2026-02-13"
+  last_modified: "2026-02-13"
+  version_history:
+    - version: "1.1.0"
+      date: "2026-02-13"
+      changes: |
+        Fixed all identified blind spots and improved robustness:
+        - Added error tracking variables (workflow_failed_at_phase, failure_reason, correction_failed, save_failed, unsaved_corrections)
+        - Changed all exit_workflow to next_phase: 4 for graceful error handling
+        - Added Phase 2 prerequisites validation step (Step 2.0)
+        - Added safety checks to prevent infinite loops in correction cycle
+        - Added retry policy to Step 3.4 (save corrected test)
+        - Expanded Step 4.1 condition to catch all failure scenarios
+        - Added on_failure handlers to all report steps
+        - Removed duplicate loop_state.iteration_counter (using execution_iteration_counter only)
+        - Enhanced final report to show partial results and detailed error information
+        - All critical failures now generate reports instead of abrupt termination
+    - version: "1.0.0"
+      date: "2026-02-13"
+      changes: "Initial comprehensive workflow with planning, implementation, execution, and correction phases"
+
+  # Gates and success criteria are declared canonically in master.yaml (phase: e2e).
+  # See: .dev-agents/workflows/master.yaml -> phases.e2e.gates
+  # and: .dev-agents/workflows/master.yaml -> gates.e2e_pass_rate
+

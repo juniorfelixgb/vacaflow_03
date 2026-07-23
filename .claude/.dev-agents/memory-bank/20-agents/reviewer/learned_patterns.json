@@ -1,0 +1,35 @@
+{
+  "_description": "Technical code patterns learned incrementally. Append only.",
+  "author": "[github-user-email]",
+  "_version": "3.0",
+  "_format": {
+    "confidence": "low (< 3 files) | medium (3-9 files) | high (10+ files)",
+    "evidence_count": "number of files",
+    "session_id": "matches session_log.json",
+    "author": "[github-user-email]"
+  },
+  "architectural_patterns": {
+    "_description": "High-level structural patterns",
+    "patterns": []
+  },
+  "coding_patterns": {
+    "_description": "Recurring implementation patterns",
+    "patterns": []
+  },
+  "data_access_patterns": {
+    "_description": "EF and repository patterns",
+    "patterns": []
+  },
+  "error_handling_patterns": {
+    "_description": "Error and validation handling",
+    "patterns": []
+  },
+  "security_patterns": {
+    "_description": "Security implementation patterns",
+    "patterns": []
+  },
+  "infrastructure_patterns": {
+    "_description": "Infra-specific patterns",
+    "patterns": []
+  }
+}

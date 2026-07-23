@@ -1,255 +1,373 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="./support.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="./support.js"></script>
 </head>
+
 <body>
-<x-dc>
-<helmet>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  * { box-sizing: border-box; }
-  body { margin: 0; }
-  a { color: #2451c4; text-decoration: none; }
-  a:hover { color: #1d3fa0; text-decoration: underline; }
-  input, textarea, select { font-family: inherit; }
-  input::placeholder, textarea::placeholder { color: #98a2b3; }
-</style>
-</helmet>
+  <x-dc>
+    <helmet>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+      <style>
+        * {
+          box-sizing: border-box;
+        }
 
-<div style="min-height:100vh; background:#f4f6f9; font-family:'IBM Plex Sans', system-ui, sans-serif; color:#1c2430;">
+        body {
+          margin: 0;
+        }
 
-  <sc-if value="{{isAuthed}}" hint-placeholder-val="{{false}}">
-    <div style="display:flex; flex-direction:column; min-height:100vh;">
+        a {
+          color: #2451c4;
+          text-decoration: none;
+        }
 
-      <div style="height:64px; background:#ffffff; border-bottom:1px solid #e2e6ec; display:flex; align-items:center; justify-content:space-between; padding:0 32px; position:sticky; top:0; z-index:10;">
-        <div style="display:flex; align-items:center; gap:24px;">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:32px; height:32px; border-radius:8px; background:{{accent}}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px;">V</div>
-            <div>
-              <div style="font-weight:700; font-size:15px; line-height:1.2;">VacaFlow</div>
-              <div style="font-size:11px; color:#8a94a6; line-height:1.2;">IGS Solutions</div>
-            </div>
-          </div>
-          <div style="display:flex; align-items:center; gap:4px;">
-            <sc-if value="{{isEmployeeRole}}">
-              <button style="{{navListStyle}}" style-hover="background:#eef2fb;" onClick="{{goToList}}">Mis Solicitudes</button>
-            </sc-if>
-            <sc-if value="{{isManagerRole}}">
-              <button style="{{navManagerStyle}}" style-hover="background:#eef2fb;" onClick="{{goToManager}}">Cola de Revisión</button>
-            </sc-if>
-          </div>
-        </div>
-        <div style="display:flex; align-items:center; gap:14px;">
-          <div style="text-align:right;">
-            <div style="font-size:13px; font-weight:600; line-height:1.3;">{{currentUserName}}</div>
-            <div style="font-size:11px; color:#8a94a6; line-height:1.3;">{{currentUserRoleLabel}}</div>
-          </div>
-          <button style="padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; color:#475467; background:#fff; border:1px solid #d0d5dd; cursor:pointer;" style-hover="background:#f4f6f9;" onClick="{{logout}}">Salir</button>
-        </div>
-      </div>
+        a:hover {
+          color: #1d3fa0;
+          text-decoration: underline;
+        }
 
-      <div style="max-width:1040px; width:100%; margin:0 auto; padding:32px; flex:1;">
+        input,
+        textarea,
+        select {
+          font-family: inherit;
+        }
 
-        <sc-if value="{{screenIsList}}" data-screen-label="Employee List">
-          <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px; gap:16px; flex-wrap:wrap;">
-            <div>
-              <h1 style="margin:0 0 4px; font-size:24px; font-weight:700;">Mis Solicitudes de Ausencia</h1>
-              <p style="margin:0; font-size:14px; color:#64748b;">Crea, edita y da seguimiento a tus solicitudes.</p>
-            </div>
-            <button style="padding:11px 18px; border-radius:8px; font-size:14px; font-weight:600; color:#fff; background:{{accent}}; border:none; cursor:pointer;" style-hover="filter:brightness(0.92);" onClick="{{goToNewRequest}}">+ Nueva Solicitud</button>
-          </div>
+        input::placeholder,
+        textarea::placeholder {
+          color: #98a2b3;
+        }
+      </style>
+    </helmet>
 
-          <sc-if value="{{hasMyRequests}}" hint-placeholder-val="{{true}}">
-            <sc-for list="{{myRequests}}" as="req" hint-placeholder-count="3">
-              <div style="background:#fff; border:1px solid #e2e6ec; border-radius:12px; padding:20px 24px; margin-bottom:14px; display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap;">
-                <div style="flex:1; min-width:240px;">
-                  <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
-                    <span style="font-size:16px; font-weight:700;">{{req.typeLabel}}</span>
-                    <span style="font-size:11px; font-weight:700; letter-spacing:0.02em; padding:4px 10px; border-radius:999px; background:{{req.badgeBg}}; color:{{req.badgeColor}};">{{req.badgeLabel}}</span>
-                  </div>
-                  <div style="font-size:14px; color:#475467; margin-bottom:6px;">{{req.rangeLabel}}</div>
-                  <div style="font-size:13px; color:#8a94a6; font-style:italic;">"{{req.reason}}"</div>
-                  <sc-if value="{{req.hasDecision}}">
-                    <div style="margin-top:10px; padding:10px 12px; background:#f4f6f9; border-radius:8px; font-size:13px; color:#475467;">{{req.decisionSummary}}</div>
-                  </sc-if>
-                </div>
-                <div style="display:flex; flex-direction:column; gap:8px; min-width:130px;">
-                  <sc-if value="{{req.canEdit}}">
-                    <button style="padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; color:#344054; background:#fff; border:1px solid #d0d5dd; cursor:pointer;" style-hover="background:#f4f6f9;" onClick="{{req.onEdit}}">Editar</button>
-                  </sc-if>
-                  <sc-if value="{{req.canSubmitRow}}">
-                    <button style="padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; color:#fff; background:{{accent}}; border:none; cursor:pointer;" style-hover="filter:brightness(0.92);" onClick="{{req.onSubmit}}">Enviar</button>
-                  </sc-if>
-                  <sc-if value="{{req.canCancelRow}}">
-                    <button style="padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; color:#b42318; background:#fff; border:1px solid #f3c6c1; cursor:pointer;" style-hover="background:#fdecec;" onClick="{{req.onCancel}}">Cancelar</button>
-                  </sc-if>
-                </div>
-              </div>
-            </sc-for>
-          </sc-if>
-          <sc-if value="{{hasNoRequests}}">
-            <div style="background:#fff; border:1px dashed #d0d5dd; border-radius:12px; padding:48px; text-align:center; color:#8a94a6; font-size:14px;">Aún no tienes solicitudes. Crea la primera con "+ Nueva Solicitud".</div>
-          </sc-if>
-        </sc-if>
+    <div
+      style="min-height:100vh; background:#f4f6f9; font-family:'IBM Plex Sans', system-ui, sans-serif; color:#1c2430;">
 
-        <sc-if value="{{screenIsForm}}" data-screen-label="Request Form">
-          <div style="margin-bottom:20px;">
-            <a style="font-size:13px; font-weight:600; cursor:pointer;" onClick="{{cancelForm}}">← Volver a Mis Solicitudes</a>
-            <h1 style="margin:10px 0 0; font-size:24px; font-weight:700;">{{formTitle}}</h1>
-          </div>
-          <div style="background:#fff; border:1px solid #e2e6ec; border-radius:12px; padding:28px; max-width:640px;">
-            <sc-if value="{{formError}}">
-              <div style="background:#fdecec; color:#b42318; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:18px;">{{formError}}</div>
-            </sc-if>
-            <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Tipo de Ausencia</label>
-            <select value="{{formAbsenceType}}" onChange="{{onAbsenceTypeChange}}" style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:18px; background:#fff;">
-              <sc-for list="{{absenceTypeOptions}}" as="opt" hint-placeholder-count="3">
-                <option value="{{opt.id}}">{{opt.label}}</option>
-              </sc-for>
-            </select>
-            <div style="display:flex; gap:16px; margin-bottom:18px;">
-              <div style="flex:1;">
-                <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Fecha de Inicio</label>
-                <input type="date" value="{{formStartDate}}" min="{{todayIso}}" onChange="{{onStartDateChange}}" style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px;" />
-              </div>
-              <div style="flex:1;">
-                <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Fecha de Fin</label>
-                <input type="date" value="{{formEndDate}}" min="{{formStartDate}}" onChange="{{onEndDateChange}}" style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px;" />
-              </div>
-            </div>
-            <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Motivo</label>
-            <textarea value="{{formReason}}" onChange="{{onReasonChange}}" placeholder="Describe brevemente el motivo de la ausencia" rows="3" style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:24px; resize:vertical;"></textarea>
-            <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;">
-              <button style="padding:11px 16px; border-radius:8px; font-size:14px; font-weight:600; color:#475467; background:#fff; border:1px solid #d0d5dd; cursor:pointer;" style-hover="background:#f4f6f9;" onClick="{{cancelForm}}">Cancelar</button>
-              <button style="padding:11px 16px; border-radius:8px; font-size:14px; font-weight:600; color:#344054; background:#fff; border:1px solid #d0d5dd; cursor:pointer;" style-hover="background:#f4f6f9;" onClick="{{saveDraft}}">Guardar Borrador</button>
-              <button style="padding:11px 18px; border-radius:8px; font-size:14px; font-weight:600; color:#fff; background:{{accent}}; border:none; cursor:pointer;" style-hover="filter:brightness(0.92);" onClick="{{submitNow}}">Enviar para Revisión</button>
-            </div>
-          </div>
-        </sc-if>
+      <sc-if value="{{isAuthed}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex; flex-direction:column; min-height:100vh;">
 
-        <sc-if value="{{screenIsManager}}" data-screen-label="Manager Review">
-          <div style="margin-bottom:24px;">
-            <h1 style="margin:0 0 4px; font-size:24px; font-weight:700;">Cola de Revisión</h1>
-            <p style="margin:0; font-size:14px; color:#64748b;">Solicitudes enviadas que esperan tu decisión.</p>
-          </div>
-
-          <sc-if value="{{hasManagerQueue}}" hint-placeholder-val="{{true}}">
-            <sc-for list="{{managerQueue}}" as="req" hint-placeholder-count="2">
-              <div style="background:#fff; border:1px solid #e2e6ec; border-radius:12px; padding:20px 24px; margin-bottom:14px;">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
-                  <div>
-                    <div style="font-size:15px; font-weight:700; margin-bottom:4px;">{{req.employeeName}} · {{req.typeLabel}}</div>
-                    <div style="font-size:14px; color:#475467; margin-bottom:4px;">{{req.rangeLabel}}</div>
-                    <div style="font-size:13px; color:#8a94a6; font-style:italic;">"{{req.reason}}"</div>
-                  </div>
-                  <span style="font-size:11px; font-weight:700; letter-spacing:0.02em; padding:4px 10px; border-radius:999px; background:#fdf1de; color:#a15c00; white-space:nowrap;">Enviada</span>
-                </div>
-                <label style="display:block; font-size:12px; font-weight:600; color:#344054; margin-bottom:6px;">Comentario (opcional)</label>
-                <textarea value="{{req.comment}}" onChange="{{req.onCommentChange}}" placeholder="Comentario para el empleado" rows="2" style="width:100%; padding:9px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:13px; margin-bottom:14px; resize:vertical;"></textarea>
-                <div style="display:flex; justify-content:flex-end; gap:10px;">
-                  <button style="padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; color:#b42318; background:#fff; border:1px solid #f3c6c1; cursor:pointer;" style-hover="background:#fdecec;" onClick="{{req.onReject}}">Rechazar</button>
-                  <button style="padding:9px 18px; border-radius:8px; font-size:13px; font-weight:600; color:#fff; background:#1f7a4d; border:none; cursor:pointer;" style-hover="filter:brightness(0.92);" onClick="{{req.onApprove}}">Aprobar</button>
-                </div>
-              </div>
-            </sc-for>
-          </sc-if>
-          <sc-if value="{{hasNoManagerQueue}}">
-            <div style="background:#fff; border:1px dashed #d0d5dd; border-radius:12px; padding:48px; text-align:center; color:#8a94a6; font-size:14px; margin-bottom:24px;">No hay solicitudes pendientes de revisión.</div>
-          </sc-if>
-
-          <sc-if value="{{hasRecentDecisions}}">
-            <h2 style="font-size:15px; font-weight:700; color:#344054; margin:28px 0 12px;">Decisiones Recientes</h2>
-            <sc-for list="{{recentDecisions}}" as="dec" hint-placeholder-count="2">
-              <div style="background:#fff; border:1px solid #e2e6ec; border-radius:12px; padding:16px 20px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+          <div
+            style="height:64px; background:#ffffff; border-bottom:1px solid #e2e6ec; display:flex; align-items:center; justify-content:space-between; padding:0 32px; position:sticky; top:0; z-index:10;">
+            <div style="display:flex; align-items:center; gap:24px;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div
+                  style="width:32px; height:32px; border-radius:8px; background:{{accent}}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px;">
+                  V</div>
                 <div>
-                  <div style="font-size:14px; font-weight:600;">{{dec.employeeName}} · {{dec.typeLabel}}</div>
-                  <div style="font-size:13px; color:#8a94a6;">{{dec.rangeLabel}}</div>
+                  <div style="font-weight:700; font-size:15px; line-height:1.2;">VacaFlow</div>
+                  <div style="font-size:11px; color:#8a94a6; line-height:1.2;">IGS Solutions</div>
                 </div>
-                <span style="font-size:11px; font-weight:700; letter-spacing:0.02em; padding:4px 10px; border-radius:999px; background:{{dec.badgeBg}}; color:{{dec.badgeColor}};">{{dec.badgeLabel}}</span>
               </div>
-            </sc-for>
-          </sc-if>
-        </sc-if>
-
-      </div>
-    </div>
-  </sc-if>
-
-  <sc-if value="{{viewIsLogin}}" hint-placeholder-val="{{true}}">
-    <div style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px;" data-screen-label="Login">
-      <div style="width:100%; max-width:420px; background:#fff; border:1px solid #e2e6ec; border-radius:14px; padding:40px; box-shadow:0 8px 24px rgba(16,24,40,0.06);">
-        <div style="font-size:12px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#64748b; margin-bottom:8px;">IGS Solutions</div>
-        <h1 style="margin:0 0 4px; font-size:28px; font-weight:700;">VacaFlow</h1>
-        <p style="margin:0 0 28px; font-size:14px; color:#64748b;">Gestión de solicitudes de ausencia</p>
-
-        <sc-if value="{{loginError}}">
-          <div style="background:#fdecec; color:#b42318; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;">{{loginError}}</div>
-        </sc-if>
-
-        <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Correo Electrónico</label>
-        <input type="email" value="{{loginEmail}}" onChange="{{onLoginEmailChange}}" placeholder="nombre@igs.com" style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:16px;" />
-
-        <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Contraseña</label>
-        <input type="password" value="{{loginPassword}}" onChange="{{onLoginPasswordChange}}" placeholder="••••••••" style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:22px;" />
-
-        <button style="width:100%; padding:12px; background:{{accent}}; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;" style-hover="filter:brightness(0.92);" onClick="{{doLogin}}">Iniciar Sesión</button>
-
-        <div style="margin-top:20px; font-size:13px; color:#64748b; text-align:center;">
-          ¿No tienes cuenta? <a style="font-weight:600; cursor:pointer;" onClick="{{goRegister}}">Regístrate</a>
-        </div>
-
-        <sc-if value="{{showDemoHints}}">
-          <div style="margin-top:24px; padding:12px 14px; background:#f4f6f9; border-radius:8px; font-size:12px; color:#64748b; line-height:1.6;">
-            <strong>Cuentas de prueba</strong> (contraseña: Demo1234!)<br />
-            Empleado: ana.torres@igs.com<br />
-            Manager: james.parker@igs.com
+              <div style="display:flex; align-items:center; gap:4px;">
+                <sc-if value="{{isEmployeeRole}}">
+                  <button style="{{navListStyle}}" style-hover="background:#eef2fb;" onClick="{{goToList}}">Mis
+                    Solicitudes</button>
+                </sc-if>
+                <sc-if value="{{isManagerRole}}">
+                  <button style="{{navManagerStyle}}" style-hover="background:#eef2fb;" onClick="{{goToManager}}">Cola
+                    de Revisión</button>
+                </sc-if>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px;">
+              <div style="text-align:right;">
+                <div style="font-size:13px; font-weight:600; line-height:1.3;">{{currentUserName}}</div>
+                <div style="font-size:11px; color:#8a94a6; line-height:1.3;">{{currentUserRoleLabel}}</div>
+              </div>
+              <button
+                style="padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; color:#475467; background:#fff; border:1px solid #d0d5dd; cursor:pointer;"
+                style-hover="background:#f4f6f9;" onClick="{{logout}}">Salir</button>
+            </div>
           </div>
-        </sc-if>
-      </div>
-    </div>
-  </sc-if>
 
-  <sc-if value="{{viewIsRegister}}">
-    <div style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px;" data-screen-label="Register">
-      <div style="width:100%; max-width:420px; background:#fff; border:1px solid #e2e6ec; border-radius:14px; padding:40px; box-shadow:0 8px 24px rgba(16,24,40,0.06);">
-        <div style="font-size:12px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#64748b; margin-bottom:8px;">IGS Solutions</div>
-        <h1 style="margin:0 0 4px; font-size:28px; font-weight:700;">Crear Cuenta</h1>
-        <p style="margin:0 0 24px; font-size:14px; color:#64748b;">Registro de nuevos empleados</p>
+          <div style="max-width:1040px; width:100%; margin:0 auto; padding:32px; flex:1;">
 
-        <sc-if value="{{regError}}">
-          <div style="background:#fdecec; color:#b42318; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;">{{regError}}</div>
-        </sc-if>
+            <sc-if value="{{screenIsList}}" data-screen-label="Employee List">
+              <div
+                style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:24px; gap:16px; flex-wrap:wrap;">
+                <div>
+                  <h1 style="margin:0 0 4px; font-size:24px; font-weight:700;">Mis Solicitudes de Ausencia</h1>
+                  <p style="margin:0; font-size:14px; color:#64748b;">Crea, edita y da seguimiento a tus solicitudes.
+                  </p>
+                </div>
+                <button
+                  style="padding:11px 18px; border-radius:8px; font-size:14px; font-weight:600; color:#fff; background:{{accent}}; border:none; cursor:pointer;"
+                  style-hover="filter:brightness(0.92);" onClick="{{goToNewRequest}}">+ Nueva Solicitud</button>
+              </div>
 
-        <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Nombre Completo</label>
-        <input type="text" value="{{regName}}" onChange="{{onRegNameChange}}" placeholder="Ana Torres" style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:16px;" />
+              <sc-if value="{{hasMyRequests}}" hint-placeholder-val="{{true}}">
+                <sc-for list="{{myRequests}}" as="req" hint-placeholder-count="3">
+                  <div
+                    style="background:#fff; border:1px solid #e2e6ec; border-radius:12px; padding:20px 24px; margin-bottom:14px; display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:240px;">
+                      <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+                        <span style="font-size:16px; font-weight:700;">{{req.typeLabel}}</span>
+                        <span
+                          style="font-size:11px; font-weight:700; letter-spacing:0.02em; padding:4px 10px; border-radius:999px; background:{{req.badgeBg}}; color:{{req.badgeColor}};">{{req.badgeLabel}}</span>
+                      </div>
+                      <div style="font-size:14px; color:#475467; margin-bottom:6px;">{{req.rangeLabel}}</div>
+                      <div style="font-size:13px; color:#8a94a6; font-style:italic;">"{{req.reason}}"</div>
+                      <sc-if value="{{req.hasDecision}}">
+                        <div
+                          style="margin-top:10px; padding:10px 12px; background:#f4f6f9; border-radius:8px; font-size:13px; color:#475467;">
+                          {{req.decisionSummary}}</div>
+                      </sc-if>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:8px; min-width:130px;">
+                      <sc-if value="{{req.canEdit}}">
+                        <button
+                          style="padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; color:#344054; background:#fff; border:1px solid #d0d5dd; cursor:pointer;"
+                          style-hover="background:#f4f6f9;" onClick="{{req.onEdit}}">Editar</button>
+                      </sc-if>
+                      <sc-if value="{{req.canSubmitRow}}">
+                        <button
+                          style="padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; color:#fff; background:{{accent}}; border:none; cursor:pointer;"
+                          style-hover="filter:brightness(0.92);" onClick="{{req.onSubmit}}">Enviar</button>
+                      </sc-if>
+                      <sc-if value="{{req.canCancelRow}}">
+                        <button
+                          style="padding:8px 14px; border-radius:8px; font-size:13px; font-weight:600; color:#b42318; background:#fff; border:1px solid #f3c6c1; cursor:pointer;"
+                          style-hover="background:#fdecec;" onClick="{{req.onCancel}}">Cancelar</button>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </sc-if>
+              <sc-if value="{{hasNoRequests}}">
+                <div
+                  style="background:#fff; border:1px dashed #d0d5dd; border-radius:12px; padding:48px; text-align:center; color:#8a94a6; font-size:14px;">
+                  Aún no tienes solicitudes. Crea la primera con "+ Nueva Solicitud".</div>
+              </sc-if>
+            </sc-if>
 
-        <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Correo Electrónico</label>
-        <input type="email" value="{{regEmail}}" onChange="{{onRegEmailChange}}" placeholder="nombre@igs.com" style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:16px;" />
+            <sc-if value="{{screenIsForm}}" data-screen-label="Request Form">
+              <div style="margin-bottom:20px;">
+                <a style="font-size:13px; font-weight:600; cursor:pointer;" onClick="{{cancelForm}}">← Volver a Mis
+                  Solicitudes</a>
+                <h1 style="margin:10px 0 0; font-size:24px; font-weight:700;">{{formTitle}}</h1>
+              </div>
+              <div
+                style="background:#fff; border:1px solid #e2e6ec; border-radius:12px; padding:28px; max-width:640px;">
+                <sc-if value="{{formError}}">
+                  <div
+                    style="background:#fdecec; color:#b42318; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:18px;">
+                    {{formError}}</div>
+                </sc-if>
+                <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Tipo de
+                  Ausencia</label>
+                <select value="{{formAbsenceType}}" onChange="{{onAbsenceTypeChange}}"
+                  style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:18px; background:#fff;">
+                  <sc-for list="{{absenceTypeOptions}}" as="opt" hint-placeholder-count="3">
+                    <option value="{{opt.id}}">{{opt.label}}</option>
+                  </sc-for>
+                </select>
+                <div style="display:flex; gap:16px; margin-bottom:18px;">
+                  <div style="flex:1;">
+                    <label
+                      style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Fecha de
+                      Inicio</label>
+                    <input type="date" value="{{formStartDate}}" min="{{todayIso}}" onChange="{{onStartDateChange}}"
+                      style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px;" />
+                  </div>
+                  <div style="flex:1;">
+                    <label
+                      style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Fecha de
+                      Fin</label>
+                    <input type="date" value="{{formEndDate}}" min="{{formStartDate}}" onChange="{{onEndDateChange}}"
+                      style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px;" />
+                  </div>
+                </div>
+                <label
+                  style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Motivo</label>
+                <textarea value="{{formReason}}" onChange="{{onReasonChange}}"
+                  placeholder="Describe brevemente el motivo de la ausencia" rows="3"
+                  style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:24px; resize:vertical;"></textarea>
+                <div style="display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;">
+                  <button
+                    style="padding:11px 16px; border-radius:8px; font-size:14px; font-weight:600; color:#475467; background:#fff; border:1px solid #d0d5dd; cursor:pointer;"
+                    style-hover="background:#f4f6f9;" onClick="{{cancelForm}}">Cancelar</button>
+                  <button
+                    style="padding:11px 16px; border-radius:8px; font-size:14px; font-weight:600; color:#344054; background:#fff; border:1px solid #d0d5dd; cursor:pointer;"
+                    style-hover="background:#f4f6f9;" onClick="{{saveDraft}}">Guardar Borrador</button>
+                  <button
+                    style="padding:11px 18px; border-radius:8px; font-size:14px; font-weight:600; color:#fff; background:{{accent}}; border:none; cursor:pointer;"
+                    style-hover="filter:brightness(0.92);" onClick="{{submitNow}}">Enviar para Revisión</button>
+                </div>
+              </div>
+            </sc-if>
 
-        <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Contraseña</label>
-        <input type="password" value="{{regPassword}}" onChange="{{onRegPasswordChange}}" placeholder="••••••••" style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:16px;" />
+            <sc-if value="{{screenIsManager}}" data-screen-label="Manager Review">
+              <div style="margin-bottom:24px;">
+                <h1 style="margin:0 0 4px; font-size:24px; font-weight:700;">Cola de Revisión</h1>
+                <p style="margin:0; font-size:14px; color:#64748b;">Solicitudes enviadas que esperan tu decisión.</p>
+              </div>
 
-        <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Rol</label>
-        <div style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:#eef1f5; border-radius:999px; font-size:13px; font-weight:600; color:#475467; margin-bottom:8px;">Empleado</div>
-        <p style="margin:0 0 22px; font-size:12px; color:#8a94a6;">Las cuentas de Manager se crean mediante datos semilla o un proceso administrativo controlado; no están disponibles en el registro público.</p>
+              <sc-if value="{{hasManagerQueue}}" hint-placeholder-val="{{true}}">
+                <sc-for list="{{managerQueue}}" as="req" hint-placeholder-count="2">
+                  <div
+                    style="background:#fff; border:1px solid #e2e6ec; border-radius:12px; padding:20px 24px; margin-bottom:14px;">
+                    <div
+                      style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
+                      <div>
+                        <div style="font-size:15px; font-weight:700; margin-bottom:4px;">{{req.employeeName}} ·
+                          {{req.typeLabel}}</div>
+                        <div style="font-size:14px; color:#475467; margin-bottom:4px;">{{req.rangeLabel}}</div>
+                        <div style="font-size:13px; color:#8a94a6; font-style:italic;">"{{req.reason}}"</div>
+                      </div>
+                      <span
+                        style="font-size:11px; font-weight:700; letter-spacing:0.02em; padding:4px 10px; border-radius:999px; background:#fdf1de; color:#a15c00; white-space:nowrap;">Enviada</span>
+                    </div>
+                    <label
+                      style="display:block; font-size:12px; font-weight:600; color:#344054; margin-bottom:6px;">Comentario
+                      (opcional)</label>
+                    <textarea value="{{req.comment}}" onChange="{{req.onCommentChange}}"
+                      placeholder="Comentario para el empleado" rows="2"
+                      style="width:100%; padding:9px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:13px; margin-bottom:14px; resize:vertical;"></textarea>
+                    <div style="display:flex; justify-content:flex-end; gap:10px;">
+                      <button
+                        style="padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; color:#b42318; background:#fff; border:1px solid #f3c6c1; cursor:pointer;"
+                        style-hover="background:#fdecec;" onClick="{{req.onReject}}">Rechazar</button>
+                      <button
+                        style="padding:9px 18px; border-radius:8px; font-size:13px; font-weight:600; color:#fff; background:#1f7a4d; border:none; cursor:pointer;"
+                        style-hover="filter:brightness(0.92);" onClick="{{req.onApprove}}">Aprobar</button>
+                    </div>
+                  </div>
+                </sc-for>
+              </sc-if>
+              <sc-if value="{{hasNoManagerQueue}}">
+                <div
+                  style="background:#fff; border:1px dashed #d0d5dd; border-radius:12px; padding:48px; text-align:center; color:#8a94a6; font-size:14px; margin-bottom:24px;">
+                  No hay solicitudes pendientes de revisión.</div>
+              </sc-if>
 
-        <button style="width:100%; padding:12px; background:{{accent}}; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; margin-bottom:16px;" style-hover="filter:brightness(0.92);" onClick="{{doRegister}}">Crear Cuenta</button>
+              <sc-if value="{{hasRecentDecisions}}">
+                <h2 style="font-size:15px; font-weight:700; color:#344054; margin:28px 0 12px;">Decisiones Recientes
+                </h2>
+                <sc-for list="{{recentDecisions}}" as="dec" hint-placeholder-count="2">
+                  <div
+                    style="background:#fff; border:1px solid #e2e6ec; border-radius:12px; padding:16px 20px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+                    <div>
+                      <div style="font-size:14px; font-weight:600;">{{dec.employeeName}} · {{dec.typeLabel}}</div>
+                      <div style="font-size:13px; color:#8a94a6;">{{dec.rangeLabel}}</div>
+                    </div>
+                    <span
+                      style="font-size:11px; font-weight:700; letter-spacing:0.02em; padding:4px 10px; border-radius:999px; background:{{dec.badgeBg}}; color:{{dec.badgeColor}};">{{dec.badgeLabel}}</span>
+                  </div>
+                </sc-for>
+              </sc-if>
+            </sc-if>
 
-        <div style="font-size:13px; color:#64748b; text-align:center;">
-          ¿Ya tienes cuenta? <a style="font-weight:600; cursor:pointer;" onClick="{{goLogin}}">Inicia sesión</a>
+          </div>
         </div>
-      </div>
+      </sc-if>
+
+      <sc-if value="{{viewIsLogin}}" hint-placeholder-val="{{true}}">
+        <div style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px;"
+          data-screen-label="Login">
+          <div
+            style="width:100%; max-width:420px; background:#fff; border:1px solid #e2e6ec; border-radius:14px; padding:40px; box-shadow:0 8px 24px rgba(16,24,40,0.06);">
+            <div
+              style="font-size:12px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#64748b; margin-bottom:8px;">
+              IGS Solutions</div>
+            <h1 style="margin:0 0 4px; font-size:28px; font-weight:700;">VacaFlow</h1>
+            <p style="margin:0 0 28px; font-size:14px; color:#64748b;">Gestión de solicitudes de ausencia</p>
+
+            <sc-if value="{{loginError}}">
+              <div
+                style="background:#fdecec; color:#b42318; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;">
+                {{loginError}}</div>
+            </sc-if>
+
+            <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Correo
+              Electrónico</label>
+            <input type="email" value="{{loginEmail}}" onChange="{{onLoginEmailChange}}" placeholder="nombre@igs.com"
+              style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:16px;" />
+
+            <label
+              style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Contraseña</label>
+            <input type="password" value="{{loginPassword}}" onChange="{{onLoginPasswordChange}}" placeholder="••••••••"
+              style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:22px;" />
+
+            <button
+              style="width:100%; padding:12px; background:{{accent}}; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;"
+              style-hover="filter:brightness(0.92);" onClick="{{doLogin}}">Iniciar Sesión</button>
+
+            <div style="margin-top:20px; font-size:13px; color:#64748b; text-align:center;">
+              ¿No tienes cuenta? <a style="font-weight:600; cursor:pointer;" onClick="{{goRegister}}">Regístrate</a>
+            </div>
+
+            <sc-if value="{{showDemoHints}}">
+              <div
+                style="margin-top:24px; padding:12px 14px; background:#f4f6f9; border-radius:8px; font-size:12px; color:#64748b; line-height:1.6;">
+                <strong>Cuentas de prueba</strong> (contraseña: Demo1234!)<br />
+                Empleado: ana.torres@igs.com<br />
+                Manager: james.parker@igs.com
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{viewIsRegister}}">
+        <div style="display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px;"
+          data-screen-label="Register">
+          <div
+            style="width:100%; max-width:420px; background:#fff; border:1px solid #e2e6ec; border-radius:14px; padding:40px; box-shadow:0 8px 24px rgba(16,24,40,0.06);">
+            <div
+              style="font-size:12px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:#64748b; margin-bottom:8px;">
+              IGS Solutions</div>
+            <h1 style="margin:0 0 4px; font-size:28px; font-weight:700;">Crear Cuenta</h1>
+            <p style="margin:0 0 24px; font-size:14px; color:#64748b;">Registro de nuevos empleados</p>
+
+            <sc-if value="{{regError}}">
+              <div
+                style="background:#fdecec; color:#b42318; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px;">
+                {{regError}}</div>
+            </sc-if>
+
+            <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Nombre
+              Completo</label>
+            <input type="text" value="{{regName}}" onChange="{{onRegNameChange}}" placeholder="Ana Torres"
+              style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:16px;" />
+
+            <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Correo
+              Electrónico</label>
+            <input type="email" value="{{regEmail}}" onChange="{{onRegEmailChange}}" placeholder="nombre@igs.com"
+              style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:16px;" />
+
+            <label
+              style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Contraseña</label>
+            <input type="password" value="{{regPassword}}" onChange="{{onRegPasswordChange}}" placeholder="••••••••"
+              style="width:100%; padding:10px 12px; border:1px solid #d0d5dd; border-radius:8px; font-size:14px; margin-bottom:16px;" />
+
+            <label style="display:block; font-size:13px; font-weight:600; color:#344054; margin-bottom:6px;">Rol</label>
+            <div
+              style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:#eef1f5; border-radius:999px; font-size:13px; font-weight:600; color:#475467; margin-bottom:8px;">
+              Empleado</div>
+            <p style="margin:0 0 22px; font-size:12px; color:#8a94a6;">Las cuentas de Manager se crean mediante datos
+              semilla o un proceso administrativo controlado; no están disponibles en el registro público.</p>
+
+            <button
+              style="width:100%; padding:12px; background:{{accent}}; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; margin-bottom:16px;"
+              style-hover="filter:brightness(0.92);" onClick="{{doRegister}}">Crear Cuenta</button>
+
+            <div style="font-size:13px; color:#64748b; text-align:center;">
+              ¿Ya tienes cuenta? <a style="font-weight:600; cursor:pointer;" onClick="{{goLogin}}">Inicia sesión</a>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
     </div>
-  </sc-if>
 
-</div>
-
-</x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#b45309&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#2451c4&quot;,&quot;#0f766e&quot;,&quot;#7c3aed&quot;,&quot;#b45309&quot;]},&quot;showDemoHints&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+  </x-dc>
+  <script type="text/x-dc" data-dc-script
+    data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;accentColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#b45309&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#2451c4&quot;,&quot;#0f766e&quot;,&quot;#7c3aed&quot;,&quot;#b45309&quot;]},&quot;showDemoHints&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
 class Component extends DCLogic {
   static ABSENCE_TYPES = [
     { id: 'vacation', label: 'Vacaciones' },
@@ -553,4 +671,5 @@ class Component extends DCLogic {
 
 </script>
 </body>
+
 </html>

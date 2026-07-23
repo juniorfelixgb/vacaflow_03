@@ -1,0 +1,91 @@
+{
+  "_description": "Audit log of technical decisions and corrections. Append only.",
+  "author": "[github-user-email]",
+  "_version": "3.0",
+  "_format": {
+    "id": "DEC-{YYYY}-{NNN}",
+    "author": "[github-user-email]",
+    "timestamp": "ISO 8601",
+    "type": "decision | bugfix | config | security | naming | reviewer_correction",
+    "source_agent": "bsa",
+    "confidence": "low | medium | high",
+    "session_id": "matches session_log.json"
+  },
+  "decisions": [
+    {
+      "id": "DEC-2026-001",
+      "author": "david.valdez@arroyoconsulting.net",
+      "timestamp": "2026-07-20T22:04:21Z",
+      "type": "security",
+      "source_agent": "bsa",
+      "confidence": "high",
+      "session_id": "2026-07-20T22:04:21Z",
+      "title": "NEXA auth security parameters are defined in NFR-SEC-001, not in an ADR",
+      "what": "Argon2id (mem>=64MB, iter>=3, parallelism>=1), JWT access 15min + refresh rotation, 30-min inactivity timeout, account lockout after 5 failures/15-min progressive. Argon2id lib is Konscious.Security.Cryptography (bcrypt/PBKDF2 banned by SAD technical constraint).",
+      "why": "Concrete values live in documentation/04-architecture/design-doc.md security table + NFR-SEC-001; the backlog's citation of 'SAD ADR-005' for Argon2id is WRONG (ADR-005 = Roslyn analyzers).",
+      "where": ["documentation/04-architecture/design-doc.md", "documentation/03-requirements/nonfunctional-spec.md", "documentation/07-development/tech-doc.md"],
+      "learned": "When writing the US-001 BRD, cite Argon2id from the tech-doc technical constraint + NFR-SEC-001, never from ADR-005.",
+      "confidence_note": "Verified across 3 authoritative docs."
+    },
+    {
+      "id": "DEC-2026-002",
+      "author": "david.valdez@arroyoconsulting.net",
+      "timestamp": "2026-07-20T22:04:21Z",
+      "type": "decision",
+      "source_agent": "bsa",
+      "confidence": "high",
+      "session_id": "2026-07-20T22:04:21Z",
+      "title": "US-001 authentication lives in the Core Monolith Auth Module, not a standalone service",
+      "what": "Authoritative SAD (Alternative C — Hybrid Split) places auth as the Auth Module inside the Core Monolith at /src/Nexa.Auth/. The older design-doc's 'Auth Service' framing is superseded.",
+      "why": "SAD-001 is the approved final architecture; design-doc.md predates the final split decision.",
+      "where": ["documentation/04-architecture/software-architecture-document.md", "documentation/07-development/tech-doc.md"],
+      "learned": "Target /src/Nexa.Auth/ (Controllers/Services/Models) + /src/Nexa.Data.Core/ (core.* schema) for auth implementation. End-user login is NOT Entra ID (Entra is service-to-service only).",
+      "confidence_note": "SAD + tech-doc agree."
+    },
+    {
+      "id": "DEC-2026-003",
+      "author": "david.valdez@arroyoconsulting.net",
+      "timestamp": "2026-07-20T22:04:21Z",
+      "type": "decision",
+      "source_agent": "bsa",
+      "confidence": "high",
+      "session_id": "2026-07-20T22:04:21Z",
+      "title": "NEXA JWT signing = RS256 (resolves HMAC-vs-RS256 doc conflict)",
+      "what": "JWT signed with RS256 (asymmetric). Documented in ADR-2026-07-20-JWT-Signing-Algorithm-RS256.",
+      "why": "design-doc security table + WBS 2.3.3 (RS256 key in Key Vault) win over SAD 'HMAC-signed' wording and WBS 3.1.1 '(HMAC RS256)' typo. Asymmetric lets APIM validate with public key without holding the signing secret.",
+      "where": ["docs/architecture/ADR-2026-07-20-JWT-Signing-Algorithm-RS256.md"],
+      "learned": "Signing key nexa-jwt-signing-key (RSA private) in Key Vault; APIM validates with public key.",
+      "confidence_note": "Coordinator-ratified."
+    },
+    {
+      "id": "DEC-2026-004",
+      "author": "david.valdez@arroyoconsulting.net",
+      "timestamp": "2026-07-20T22:04:21Z",
+      "type": "security",
+      "source_agent": "bsa",
+      "confidence": "high",
+      "session_id": "2026-07-20T22:04:21Z",
+      "title": "Auth transactional email goes DIRECT via IEmailSender, not Dispatch",
+      "what": "Password-reset (and later new-user invitation) emails are sent by the Auth Module directly through IEmailSender/SendGrid, NOT enqueued through the compliance-gated Dispatch Module.",
+      "why": "Dispatch/ServiceBus/Suppression are Sprint 2; auth email is Sprint 1 and is security-critical transactional mail exempt from marketing suppression/opt-out. FRS traceability maps FR-AA-012 to 'Auth Service / IEmailSender Adapter'. The 'only Dispatch calls providers' rule protects journey/mass sends only.",
+      "where": ["docs/architecture/ADR-2026-07-20-Auth-Transactional-Email-Direct-IEmailSender.md"],
+      "learned": "Reviewer must ensure Auth never does bulk sends or bypasses compliance gate for non-transactional email. SendGrid SDK stays in the adapter; Auth depends on IEmailSender interface.",
+      "confidence_note": "Coordinator-directed."
+    },
+    {
+      "id": "DEC-2026-005",
+      "author": "david.valdez@arroyoconsulting.net",
+      "timestamp": "2026-07-20T22:04:21Z",
+      "type": "decision",
+      "source_agent": "bsa",
+      "confidence": "medium",
+      "session_id": "2026-07-20T22:04:21Z",
+      "title": "OpenAPI contract for /auth/* is a US-001 deliverable to unblock US-025",
+      "what": "Publish a code-generated OpenAPI 3 document for /auth/* (Microsoft.AspNetCore.OpenApi native in .NET 10, or Swashbuckle). Also: password policy default (12/complexity/breached/history 5, PO-overridable); reset link TTL 60min single-use hashed; account lockout 5/15min added as AC-007.",
+      "why": "OpenAPI is neither mandated nor prohibited anywhere in documentation/ (verified). Lets Developer 2 build US-025 login UI in parallel. OSS tooling complies with the licensed-runtime ban.",
+      "where": ["docs/architecture/ADR-2026-07-20-OpenAPI-Contract-Deliverable.md", "docs/brds/BRD-2026-07-20-User-Authentication-and-Session-Management.md"],
+      "learned": "US-001 is backend/API only; UX_Booster skipped (no UI surface, UI is US-025). Greenfield: no src/ or .sln existed; US-001 bootstraps the whole solution (R-002 effort risk).",
+      "confidence_note": "OpenAPI location (repo/APIM/pipeline) still TBD with Tech Lead."
+    }
+  ]
+}

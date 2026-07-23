@@ -1,0 +1,22 @@
+{
+  "_description": "Detected language, framework, and tech stack. Cached after first discovery.",
+  "author": "[github-user-email]",
+  "_version": "3.0",
+  "language": "",
+  "framework": "",
+  "framework_version": "",
+  "project_type": "",
+  "build_tool": "",
+  "solution_file": "",
+  "primary_namespaces": null,
+  "detected_patterns": null,
+  "key_technologies": null,
+  "database": "",
+  "authentication": {
+    "type": "",
+    "details": null,
+    "author": "[github-user-email]"
+  },
+  "discovery_date": "",
+  "last_updated": ""
+}

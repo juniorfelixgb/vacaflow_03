@@ -1,0 +1,26 @@
+{
+  "_description": "Business rules and domain logic detected from the codebase. Append only.",
+  "author": "[github-user-email]",
+  "_version": "1.0",
+  "_format": {
+    "confidence": "low | medium | high",
+    "session_id": "matches session_log.json",
+    "author": "[github-user-email]"
+  },
+  "domain_rules": {
+    "_description": "Core business rules",
+    "rules": []
+  },
+  "entity_lifecycles": {
+    "_description": "State machines for key entities",
+    "lifecycles": []
+  },
+  "domain_relationships": {
+    "_description": "Key entity relationships",
+    "relationships": []
+  },
+  "detected_features": {
+    "_description": "Business features detected",
+    "features": []
+  }
+}

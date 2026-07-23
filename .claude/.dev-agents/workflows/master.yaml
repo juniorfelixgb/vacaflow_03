@@ -1,0 +1,348 @@
+# Master Agentic Workflow Definition
+# Created: 2026-05-13 (ADR-2026-05-13)
+#
+# This file is the primary entrypoint for all multi-agent workflows in the project.
+# It composes sub-workflows defined in dev.yaml and qa.yaml.
+#
+# Invocation contract:
+#   The Orchestrator agent reads this file FIRST, then selects a workflow,
+#   then delegates each phase to the named agent or skill.
+
+version: "2.0"
+spec: "ADR-2026-05-13"
+
+# -----------------------------------------------------------------------------
+# Workflow selection
+# -----------------------------------------------------------------------------
+# Users invoke a workflow by name. Example:
+#   @Orchestrator full_dev User Story #1234
+#   @Orchestrator review_only @file
+#   @QA_Orchestrator qa_only
+
+workflows:
+
+  full_dev:
+    description: >
+      End-to-end development workflow: from User Story to QA sign-off.
+    phases:
+      - preflight
+      - story            # only if no User Story ID provided
+      - implementation
+      - review
+      - unit_tests
+      - e2e
+      - doc_update       # always last — sync docs with all changes
+    sub_workflow_files:
+      - dev.yaml         # phases preflight..unit_tests + doc_update live here
+      - qa.yaml          # phase e2e lives here
+
+  qa_only:
+    description: >
+      Run E2E QA validation only. Assumes implementation is complete.
+    phases:
+      - preflight
+      - e2e
+    sub_workflow_files:
+      - qa.yaml
+
+  review_only:
+    description: >
+      Run code review only against current changes. No story, no impl, no tests.
+    phases:
+      - preflight
+      - review
+    sub_workflow_files:
+      - dev.yaml
+
+  hotfix:
+    description: >
+      Fast-path: implementation + review + unit tests. Skips story creation and E2E.
+    phases:
+      - preflight
+      - implementation
+      - review
+      - unit_tests
+      - doc_update
+    sub_workflow_files:
+      - dev.yaml
+
+  selftest:
+    description: >
+      Diagnostic smoke test. Validates that the agentic system is wired correctly.
+      Read-only: no code is changed, no work items are written.
+    phases:
+      - selftest
+    sub_workflow_files: []
+
+# -----------------------------------------------------------------------------
+# Phase definitions (canonical names)
+# -----------------------------------------------------------------------------
+# Each phase declares the responsible agent/skill, expected inputs/outputs,
+# and the objective gate that must pass before advancing.
+
+phases:
+
+  preflight:
+    owner: Orchestrator
+    purpose: Validate environment before any agentic work begins.
+    inputs:
+      - user_request
+    outputs:
+      - environment_ok (bool)
+    gates:
+      - work_tracking_mcp_available
+      - on_feature_branch
+    on_failure: hard_block
+
+  story:
+    owner: Bsa
+    skills_invoked:
+      - Implementation_Plan_Generator
+      - WorkItem_Operations
+      - UX_Booster             # plan mode — enriches AC with UX requirements (UI features only)
+    purpose: Create BRD + User Story markdown, then push to the work-tracking platform.
+    inputs:
+      - feature_description
+    outputs:
+      - user_story_md_path
+      - work_item_id
+    gates:
+      - user_story_validated_by_user (supervised mode)
+
+  implementation:
+    owner: Coder
+    skills_invoked:
+      - Memory_Protocol
+      - UI_Component_Lookup       # optional (frontend tasks)
+      - Db_Review              # optional (DB-touching tasks)
+      - Codemap                # incremental update after every implementation
+      - Update_Docs            # doc sync after every implementation
+    purpose: Implement the requirements following project standards.
+    inputs:
+      - user_story_md_path | work_item_id
+    outputs:
+      - changed_files (list)
+      - build_status
+    gates:
+      - build_ok                # build command exit 0
+      - lint_ok                 # frontend lint when applicable
+    retry_policy:
+      max_attempts: 2
+
+  review:
+    owner: Reviewer
+    skills_invoked:
+      - Memory_Protocol
+      - Db_Review               # for database/migration changes
+      - UX_Booster              # code mode — UX/UI audit for frontend files (20% weight in score)
+    purpose: Score code quality 1-10; produce critical/suggestion/future items.
+    inputs:
+      - changed_files
+    outputs:
+      - review_score (int 1..10)
+      - critical_items (list)
+      - suggestions (list)
+    gates:
+      - review_score >= 9
+    loop_back_to: implementation
+    max_iterations: 5
+
+  unit_tests:
+    owner: Coder
+    skills_invoked:
+      - Test_Runner
+    purpose: Run backend and frontend unit tests.
+    inputs:
+      - changed_files
+    outputs:
+      - backend_pass_rate
+      - frontend_pass_rate
+      - coverage_pct
+    gates:
+      - backend_pass_rate >= 0.98
+      - frontend_pass_rate >= 0.98
+      - coverage_pct >= 0.80
+    retry_policy:
+      max_attempts: 2
+      retry_via: Coder
+
+  e2e:
+    owner: QA_Orchestrator
+    skills_invoked:
+      - E2E_Plan
+      - E2E_Generate
+      - E2E_Heal
+      - Test_Runner
+      - Update_Docs       # invoked by QA_Orchestrator after workflow completes
+    purpose: End-to-end validation with plan -> generate -> heal loop.
+    inputs:
+      - acceptance_criteria
+    outputs:
+      - e2e_pass_rate
+      - failing_specs (list)
+    gates:
+      - e2e_pass_rate >= 0.95
+    sub_workflow_file: qa.yaml
+
+  doc_update:
+    owner: Orchestrator
+    skills_invoked:
+      - Update_Docs
+    purpose: >
+      Synchronize all project documentation with changes produced in this workflow.
+      Runs as the final phase of full_dev and hotfix.
+    inputs:
+      - files_modified
+      - implementation_summary
+      - feature_name
+      - user_story_id
+    outputs:
+      - docs_updated (list)
+      - changelog_updated (bool)
+      - gaps_flagged (list)
+    gates: []          # non-blocking — docs are best-effort, never block delivery
+    on_failure: log_and_continue
+    sub_workflow_file: dev.yaml   # Phase 6 in dev.yaml
+
+  selftest:
+    owner: Orchestrator
+    purpose: >
+      Validate agentic system wiring without invoking any agent. Read-only diagnostic.
+    inputs: []
+    outputs:
+      - selftest_report (markdown)
+    checks:
+      - id: agents_md_present
+        check: "file exists: .github/AGENTS.md"
+      - id: master_yaml_parses
+        check: "this file parses as valid YAML"
+      - id: all_agents_present
+        check: "files exist: .github/agents/{Orchestrator,Bsa,Coder,Reviewer,QA_Orchestrator}.md"
+      - id: all_skills_present
+        check: "directories exist: .github/agents/Skills/{Memory_Protocol,Implementation_Plan_Generator,WorkItem_Operations,UI_Component_Lookup,Db_Review,Test_Runner,E2E_Plan,E2E_Generate,E2E_Heal,Update_Docs,Codemap,UX_Booster}/SKILL.md"
+      - id: memory_paths_present
+        check: "directories exist: .dev-agents/memory-bank/{00-shared,20-agents/{orchestrator,bsa,coder,reviewer,qa},30-learnings}"
+      - id: memory_indexes_readable
+        check: "JSON parses: .dev-agents/memory-bank/00-shared/patterns/_index.json, .dev-agents/memory-bank/00-shared/anti-patterns/_index.json, .dev-agents/memory-bank/20-agents/qa/_index.json"
+      - id: work_tracking_mcp_probe
+        check: "a lightweight read-only work-tracking MCP tool callable within 30s (no write)"
+      - id: workflow_aliases_resolve
+        check: "every workflow phase has a matching phase definition"
+    on_failure: report_and_stop
+    output_template: |
+      ## Selftest report
+
+      | Check | Status | Detail |
+      | ----- | :----: | ------ |
+      {{#each checks}}
+      | {{id}} | {{status}} | {{detail}} |
+      {{/each}}
+
+      **Overall**: {{overall_status}}
+
+# -----------------------------------------------------------------------------
+# Gate definitions
+# -----------------------------------------------------------------------------
+
+gates:
+
+  work_tracking_mcp_available:
+    type: tool_check
+    check: "a lightweight read-only work-tracking MCP tool is callable"
+    timeout_sec: 30
+
+  on_feature_branch:
+    type: git_check
+    check: "current branch is not main/master/develop"
+
+  build_ok:
+    type: command
+    command: "[the project's build command]"
+    expect: { exit_code: 0 }
+
+  lint_ok:
+    type: command
+    command: "[the project's lint command]"
+    expect: { exit_code: 0 }
+    optional_when: no_frontend_changes
+
+  review_score:
+    type: metric
+    source: Reviewer
+
+  backend_pass_rate:
+    type: metric
+    source: Test_Runner
+    command: "[the project's backend test command]"
+
+  frontend_pass_rate:
+    type: metric
+    source: Test_Runner
+    command: "[the project's frontend test command]"
+
+  coverage_pct:
+    type: metric
+    source: Test_Runner
+    threshold_org_policy: 0.80
+
+  e2e_pass_rate:
+    type: metric
+    source: E2E_Heal
+
+# -----------------------------------------------------------------------------
+# Execution modes (chosen at invocation time)
+# -----------------------------------------------------------------------------
+
+modes:
+
+  supervised:
+    description: User confirms each phase before next starts.
+    auto_advance: false
+
+  semi:
+    description: Auto-advance on objective gate pass; pause on subjective gate.
+    auto_advance: on_objective_pass
+
+  unattended:
+    description: Auto-advance based on gates only. No user confirmation.
+    auto_advance: always
+    requires_all_gates_objective: true
+
+feedback_levels:
+  full: "Detailed step-by-step progress, full diffs, full agent rationale"
+  limited: "Phase summary + gate results + key decisions"
+  minimal: "Final summary only"
+
+# -----------------------------------------------------------------------------
+# Telemetry (future iteration, declared here as forward-compatible contract)
+# -----------------------------------------------------------------------------
+
+telemetry:
+  enabled: false        # to be turned on in a follow-up
+  emit_format: jsonl
+  emit_path: ".dev-agents/memory-bank/20-agents/orchestrator/telemetry.jsonl"
+  events_per_phase:
+    - phase_started
+    - phase_completed
+    - gate_evaluated
+    - retry_triggered
+    - workflow_completed
+
+# -----------------------------------------------------------------------------
+# Sub-workflow references
+# -----------------------------------------------------------------------------
+# The legacy YAMLs preserved as sub-workflows during the ADR-2026-05-13
+# transition. They contain detailed step-by-step instructions that this
+# master file references by phase name.
+
+sub_workflows:
+
+  dev:
+    file: dev.yaml
+    legacy_origin: ".dev-agents/workflows/dev.yaml"
+    phases_covered: [preflight, story, implementation, review, unit_tests, doc_update]
+
+  qa:
+    file: qa.yaml
+    legacy_origin: ".dev-agents/workflows/qa.yaml"
+    phases_covered: [e2e]

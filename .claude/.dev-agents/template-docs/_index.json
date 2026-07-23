@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "purpose": "Canonical templates for all documents produced by the agentic system. Single source of truth — modify formats here without touching agents or skills. Agents and skills MUST reference templates from this folder and MAY add, remove, or rename sections when clarity requires it, documenting deviations inside each generated document.",
+  "policy": {
+    "canonical_source": ".dev-agents/template-docs/",
+    "modification_allowed": true,
+    "modification_rule": "Agents may add, remove, or rename sections per document instance for clarity. Structural changes to a template itself must be made here, via PR.",
+    "deviation_logging": "Each generated document records template deviations in its own '§1 Notes on template usage' (or equivalent) section."
+  },
+  "templates": [
+    {
+      "id": "brd",
+      "file": "brd-template.md",
+      "produces": "docs/brds/BRD-<YYYY-MM-DD>-<slug>.md",
+      "owner_agent": "Bsa",
+      "used_by_skills": [
+        "implementation-plan-generator"
+      ]
+    },
+    {
+      "id": "user-story",
+      "file": "user-story-template.md",
+      "produces": "docs/user-stories/US-<YYYY-MM-DD>-<slug>.md",
+      "owner_agent": "Bsa",
+      "used_by_skills": [
+        "ado-operations"
+      ]
+    },
+    {
+      "id": "implementation-plan",
+      "file": "implementation-plan-template.md",
+      "produces": "docs/implementation-plans/IP-<YYYY-MM-DD>-<slug>.md",
+      "owner_agent": "Bsa",
+      "used_by_skills": [
+        "implementation-plan-generator"
+      ]
+    },
+    {
+      "id": "ado-user-story-description",
+      "file": "work-item-description-template.md",
+      "produces": "work-tracking platform work item System.Description (HTML)",
+      "owner_agent": "Bsa",
+      "used_by_skills": [
+        "ado-operations"
+      ]
+    },
+    {
+      "id": "code-review-report",
+      "file": "code-review-report-template.md",
+      "produces": "docs/reviews/CR-<YYYY-MM-DD>-<slug>.md",
+      "owner_agent": "Reviewer",
+      "used_by_skills": []
+    },
+    {
+      "id": "test-plan",
+      "file": "test-plan-template.md",
+      "produces": "docs/test-plans/TP-<YYYY-MM-DD>-<slug>.md",
+      "owner_agent": "QA_Orchestrator",
+      "used_by_skills": [
+        "playwright-plan",
+        "playwright-generate"
+      ]
+    },
+    {
+      "id": "adr",
+      "file": "adr-template.md",
+      "produces": "docs/architecture/ADR-<YYYY-MM-DD>-<slug>.md",
+      "owner_agent": "Bsa",
+      "used_by_skills": []
+    },
+    {
+      "id": "bug-report",
+      "file": "bug-report-template.md",
+      "produces": "docs/analysis/Bug-<YYYY-MM-DD>-<slug>.md",
+      "owner_agent": "Bsa",
+      "used_by_skills": []
+    },
+    {
+      "id": "pull-request-description",
+      "file": "pull-request-description-template.md",
+      "produces": "Pull request description body (work-tracking platform PRs)",
+      "owner_agent": "Orchestrator",
+      "used_by_skills": [
+        "ado-operations"
+      ]
+    },
+    {
+      "id": "commit-message",
+      "file": "commit-message-template.md",
+      "produces": "Git commit message",
+      "owner_agent": "Coder",
+      "used_by_skills": []
+    },
+    {
+      "id": "risk-assessment",
+      "file": "risk-assessment-template.md",
+      "produces": "docs/risks/RA-<YYYY-MM-DD>-<slug>.md",
+      "owner_agent": "Bsa",
+      "used_by_skills": []
+    },
+    {
+      "id": "rollback-plan",
+      "file": "rollback-plan-template.md",
+      "produces": "docs/rollback-plans/RB-<YYYY-MM-DD>-<slug>.md",
+      "owner_agent": "Coder",
+      "used_by_skills": []
+    },
+    {
+      "id": "migration-plan",
+      "file": "migration-plan-template.md",
+      "produces": "docs/migration/MIG-<YYYY-MM-DD>-<slug>.md",
+      "owner_agent": "Bsa",
+      "used_by_skills": []
+    }
+  ]
+}

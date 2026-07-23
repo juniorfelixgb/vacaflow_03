@@ -1,0 +1,246 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .claude/qa-config.yaml — GENERIC TEMPLATE (unified config)
+#
+# This file is a TEMPLATE only — it shows the expected structure.
+#
+# The REAL project config lives at:
+#   docs/qa-config.yaml   ← every agent, command and skill reads THIS at runtime
+#
+# It unifies what used to be two files:
+#   • lane/runtime config   (former docs/project.yaml)      → identity, automation,
+#       lanes, environment_variables, quality_gates, locator_strategy
+#   • architecture contract (former docs/arch-contract.json) → stack, test_strategy,
+#       structure, test_data, agents_config, cicd  (approved at CP-1)
+#
+# HOW TO CREATE docs/qa-config.yaml FOR A NEW PROJECT:
+#   Run /qa-setup  →  the agent runs the intake and generates this single file,
+#   presenting the full draft at checkpoint CP-1 before writing it.
+#
+# Manual alternative: copy this file to docs/qa-config.yaml, fill in your values.
+#
+# RULES:
+#   • Lane commands + lane skills read the lane/runtime sections.
+#   • Cross-lane stack-neutral skills (reviewer, cicd, test-data,
+#     security-accessibility, metrics, observability, clean-code) read the contract
+#     sections (stack, test_strategy, structure, test_data, agents_config, cicd) and
+#     only run for agent ids in agents_config.enabled_agents.
+#   • The contract sections require CP-1 approval; changes to approved values are
+#     recorded as CP-AMEND-{n} entries in hitl_log — never silently edited.
+#   • Never hardcode any of these values in commands, skills, or reference docs.
+#   • Sensitive values (URLs, passwords, PATs) live only in .env — never in this file.
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: 3
+status: active
+updated_at: 'YYYY-MM-DD'
+
+# ── Project meta ────────────────────────────────────────────────────────────
+meta:
+  project_id: 'your-project-key'           # matches project_identity.project_key
+  schema_version: '2.0.0'
+  created_at: ''
+  last_updated: ''
+  owner: ''
+
+# ── Lane / runtime config (former project.yaml) ─────────────────────────────
+project_identity:
+  project_key: 'your-project-key'          # lowercase, hyphens (e.g. 'my-shop')
+  display_name: 'Your Project Name'        # shown in reports and Quick Reference Card
+  ado_organization: ''                     # e.g. 'mycompany' — leave blank if not using ADO
+  ado_project: ''                          # e.g. 'My Project' — leave blank if not using ADO
+  team: ''                                 # optional: team or squad name
+
+# Optional — ADO Test Plan integration. Used by the manual-TC CSV upload
+# (tc-csv-template.md §5/§8): area path, target plan/suite, and the default
+# configuration id for test points. Leave blank → REST discovery or ask the user.
+ado_test_management:
+  area_path: ''                            # blank → defaults to project_identity.ado_project
+  test_plan_id: ''                         # ADO Test Plan id
+  test_suite_id: ''                        # target suite for uploaded TCs
+  test_point_config_id: ''                 # default config id for test points (GET /_apis/testplan/configurations)
+
+# Optional — ADO wiki publishing. Used by /qa-release-report certificate mode
+# (deployment-certificate-template.md). Blank → confirm the path with the user.
+wiki:
+  releases_path: '/Releases'               # parent wiki page for release/hotfix certificates
+
+automation:
+  test_runner: 'playwright'                # playwright | cypress | webdriverio
+  language: 'typescript'                   # typescript | javascript
+  bdd_framework: 'playwright-bdd'          # playwright-bdd | @cucumber/cucumber | none — only used by bdd-gherkin lanes
+  config_file: 'playwright.config.ts'
+  page_object_dir: 'src/pageObjects'       # POM — shared, used by every pom-spec and bdd-gherkin lane
+
+# ── Lanes ────────────────────────────────────────────────────────────────────
+# A lane's NAME is a free purpose label (e.g. regression, acceptance, checkout).
+# Its `style` decides the pipeline and the authoring skills — the name never does.
+# A lane named 'regression' could just as well use style: bdd-gherkin (see the worked
+# example in docs/QA-AGENTS-GUIDE.md). Each lane carries only the path fields its style
+# requires. Styles and their required fields: .claude/docs/reference/lane-styles.md
+#   • pom-spec      → test_dir + automation.page_object_dir
+#   • bdd-gherkin   → feature_dir + step_dir + generated_dir + gen_command + automation.page_object_dir
+#   • api-request   → test_dir + helper_dir + base_url_env_var
+lanes:
+  regression:
+    enabled: true
+    style: pom-spec                          # pom-spec | bdd-gherkin | api-request
+    description: 'UI regression — POM spec files'
+    test_dir: 'src/tests/ui-tests'
+    fixture_file: 'src/fixtures/users.fixture.ts'
+    project_name: 'UI-Tests'
+    run_command: 'npx playwright test --project=UI-Tests'
+    smoke_command: 'npx playwright test --project=UI-Tests --grep @smoke'
+    report_command: 'npx playwright show-report'
+
+  acceptance:
+    enabled: true
+    style: bdd-gherkin                       # pom-spec | bdd-gherkin | api-request
+    description: 'Acceptance scenarios in business language — Gherkin feature files + step definitions'
+    feature_dir: 'features/acceptance'
+    step_dir: 'src/step-defination'
+    generated_dir: '.features-gen'
+    gen_command: 'npx bddgen'
+    project_name: 'BDD-Acceptance'
+    run_command: 'npx playwright test --project=BDD-Acceptance'
+    smoke_command: 'npx playwright test --project=BDD-Acceptance --grep @smoke'
+    report_command: 'npx playwright show-report'
+
+  api:
+    enabled: false                           # set true to enable this lane
+    style: api-request                       # pom-spec | bdd-gherkin | api-request
+    description: 'API tests — Playwright request fixture (no browser)'
+    test_dir: 'src/tests/api-tests'
+    helper_dir: 'src/api-helpers'            # auth, headers, payload factories
+    base_url_env_var: 'API_URL'              # env var holding the API base URL
+    openapi_spec: ''                         # optional: path to OpenAPI spec for contract checks
+    project_name: 'API-Tests'
+    run_command: 'npx playwright test --project=API-Tests'
+    smoke_command: 'npx playwright test --project=API-Tests --grep @smoke'
+    report_command: 'npx playwright show-report'
+
+environment_variables:
+  required:
+    - name: URL
+      used_by: 'Login page navigation'
+    - name: USERNAME
+      used_by: 'Login credentials'
+    - name: PASSWORD
+      used_by: 'Login credentials'
+  optional:
+    - name: AZURE_DEVOPS_PAT
+      used_by: 'ADO integration in /qa-lane'
+      how_to_get: 'Azure DevOps → User Settings → Personal Access Tokens'
+  custom: []
+
+quality_gates:
+  ac_coverage: 100
+  max_tcs_per_wave: 10
+  pr_checkpoint_required: true
+
+locator_strategy:
+  priority:
+    - getByRole()
+    - getByLabel()
+    - getByTestId()
+    - getByText()
+    - 'CSS attribute selector'
+  forbidden:
+    - XPath
+    - nth()
+    - first()
+
+# ── Architecture contract (former arch-contract.json — approved at CP-1) ─────
+stack:
+  language: 'typescript'
+  ui_framework: ''
+  backend_language: ''
+  db_type: ''
+  cloud_provider: ''
+  mobile_platform: null
+
+test_strategy:
+  approach: 'bdd'                            # bdd | tdd
+  pyramid:
+    unit: 60
+    api: 25
+    ui: 15
+  regression_schedule: 'nightly'
+  smoke_max_minutes: 10
+
+structure:
+  root_dir: 'src/'
+  folders:
+    pages: ''
+    fixtures: ''
+    helpers: ''
+    data: ''
+    reports: ''
+  naming_conventions:
+    spec_suffix: '.spec.ts'
+    step_suffix: '.steps.ts'
+    page_object_suffix: 'Page.ts'
+  selector_strategy: 'role-first'
+  reporter: 'html'                          # html | allure
+
+test_data:
+  mode: 'synthetic'                         # synthetic | anonymized | mixed
+  isolation_strategy:
+    e2e: 'tenant_prefix'
+    api: 'transaction_rollback'
+  has_pii: false
+  pii_fields: []
+  pii_anonymization_approved: false
+  cleanup_policy: 'after_suite'
+  credential_source: '.env'
+  tenant_prefix_pattern: 'qa-{run_id}-'
+
+agents_config:
+  enabled_agents:
+    - reviewer
+    - cicd
+    - test-data
+    - metrics
+    - clean-code
+  mutation_score_threshold: 70
+  flakiness_threshold_pct: 5
+  healer_auto_trigger: false
+  security_scan:
+    tools: []
+    blocking_severity: 'critical'
+  accessibility:
+    standard: 'WCAG 2.1 AA'
+    blocking: false
+  observability_provider: 'none'
+
+cicd:
+  platform: 'azure_devops'                  # azure_devops | github_actions
+  pr_gates:
+    - smoke
+    - static_analysis
+  branch_protection:
+    main:
+      - all_gates
+  environments:
+    - name: 'qa'
+      url_env_var: 'URL'
+      allowed_operations:
+        - read
+        - write
+        - reset
+      production_like: false
+  canary_config: null
+
+synthetic_monitoring: null
+production_feedback: null
+
+# ── HITL audit trail (CP-1 approval + CP-AMEND-{n} amendments) ───────────────
+hitl_log: []
+
+notes:
+  - 'Read docs/qa-config.yaml at the start of every task. Never hardcode values in command/skill/agent files.'
+  - 'Lane sections (lanes, quality_gates, locator_strategy, environment_variables) drive /qa-lane and the lane skills.'
+  - 'Each lane declares a `style` (pom-spec | bdd-gherkin | api-request). The style — never the lane name — decides the pipeline and authoring skills. See .claude/docs/reference/lane-styles.md.'
+  - 'Contract sections (stack, test_strategy, structure, test_data, agents_config, cicd) drive the cross-lane stack-neutral skills and require CP-1.'
+  - 'If ado_organization or ado_project are blank, skip ADO fetch and ask the user to provide AC manually.'
+  - 'bdd_framework determines which import pattern to use in step definition files (bdd-gherkin lanes only).'
+  - 'No cross-lane skill runs until CP-1 is approved (recorded in hitl_log).'

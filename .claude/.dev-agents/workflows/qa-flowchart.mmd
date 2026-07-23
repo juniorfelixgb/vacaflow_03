@@ -1,0 +1,84 @@
+flowchart TD
+    Start([🚀 Start QA Workflow]) --> Phase1{{"PHASE 1<br/>Requirement Analysis"}}
+    
+    %% ============ PHASE 1: REQUIREMENT ANALYSIS & PLANNING ============
+    Phase1 --> Step1_1[📄 Step 1.1<br/>Load Requirement Document<br/>Agent: QA_Orchestrator]
+    Step1_1 -->|Success| Step1_2[🎯 Step 1.2<br/>Generate Test Plan<br/>Agent: E2E_Plan]
+    Step1_1 -->|Failure| Error1[❌ Error: Invalid Requirement<br/>Exit Workflow]
+    
+    Step1_2 -->|Success| Step1_3[💾 Step 1.3<br/>Save Test Plan<br/>docs/test-suites/]
+    Step1_2 -->|Failure| Retry1{Retry?}
+    Retry1 -->|Yes| Step1_2
+    Retry1 -->|Max Retries| Error2[❌ Error: Planning Failed<br/>Exit Workflow]
+    
+    Step1_3 -->|Success| Step1_4[📊 Step 1.4<br/>Planning Phase Report]
+    Step1_3 -->|Failure| Error3[❌ Error: Save Failed<br/>Exit Workflow]
+    
+    Step1_4 --> Phase2{{"PHASE 2<br/>Test Implementation"}}
+    
+    %% ============ PHASE 2: TEST IMPLEMENTATION ============
+    Phase2 --> Step2_1[💻 Step 2.1<br/>Generate E2E Code<br/>Agent: E2E_Generate]
+    Step2_1 -->|Success| Step2_2[💾 Step 2.2<br/>Save Test File<br/>[e2e-tests-dir]/]
+    Step2_1 -->|Failure| Retry2{Retry?}
+    Retry2 -->|Yes| Step2_1
+    Retry2 -->|Max Retries| Error4[❌ Error: Implementation Failed<br/>Exit Workflow]
+    
+    Step2_2 -->|Success| Step2_3[📊 Step 2.3<br/>Implementation Report]
+    Step2_2 -->|Failure| Error5[❌ Error: Save Failed<br/>Exit Workflow]
+    
+    Step2_3 --> Phase3{{"PHASE 3<br/>Test Execution & Correction<br/>Max 3 Iterations"}}
+    
+    %% ============ PHASE 3: TEST EXECUTION & CORRECTION LOOP ============
+    Phase3 --> InitCounter[🔄 Initialize Counter<br/>iteration = 0]
+    InitCounter --> Step3_1[▶️ Step 3.1<br/>Execute E2E Test<br/>Agent: QA_Executor]
+    
+    Step3_1 -->|Success| Step3_2{🔍 Step 3.2<br/>Evaluate Result<br/>PASS or FAIL?}
+    Step3_1 -->|Failure| Retry3{Retry?}
+    Retry3 -->|Yes| Step3_1
+    Retry3 -->|Max Retries| Error6[❌ Error: Execution Failed<br/>Exit Workflow]
+    
+    Step3_2 -->|✅ PASS| SetSuccess[✔️ Set Success Flag<br/>test_execution_success = true]
+    SetSuccess --> Phase4{{"PHASE 4<br/>Finalization"}}
+    
+    Step3_2 -->|❌ FAIL<br/>iteration < 3| IncrementCounter[➕ Increment Counter<br/>iteration++]
+    IncrementCounter --> Step3_3[🔧 Step 3.3<br/>Correct Failing Test<br/>Agent: QA_Dealer]
+    
+    Step3_2 -->|❌ FAIL<br/>iteration >= 3| MarkSkip[⏭️ Mark as Skip<br/>test_marked_as_skip = true<br/>tests_skipped_count++]
+    MarkSkip --> Phase4
+    
+    Step3_3 -->|Success| Step3_4[💾 Step 3.4<br/>Save Corrected Test]
+    Step3_3 -->|Failure| CorrectionFailed[⚠️ Correction Failed<br/>Proceed to Report]
+    CorrectionFailed --> Phase4
+    
+    Step3_4 -->|Success| Step3_5[📊 Step 3.5<br/>Correction Attempt Report<br/>Attempt: iteration/3]
+    Step3_4 -->|Failure| SaveFailed[⚠️ Save Failed]
+    SaveFailed --> Phase4
+    
+    Step3_5 -->|Loop Back| Step3_1
+    
+    %% ============ PHASE 4: FINALIZATION & REPORTING ============
+    Phase4 --> Step4_1{🏷️ Step 4.1<br/>Need to Mark as Skip?}
+    Step4_1 -->|Yes<br/>test_marked_as_skip = true| MarkSkipAction[⏭️ Add test.skip<br/>Add skip comment]
+    Step4_1 -->|No| Step4_2
+    MarkSkipAction --> Step4_2[📝 Step 4.2<br/>Generate Final Report<br/>Agent: QA_Orchestrator]
+    
+    Step4_2 --> Step4_3[📊 Step 4.3<br/>Display Final Summary<br/>- Tests Created<br/>- Tests Passed<br/>- Tests Skipped<br/>- Deliverables]
+    
+    Step4_3 --> End([🏁 End Workflow<br/>Complete])
+    
+    %% Styling
+    classDef phaseStyle fill:#e1f5ff,stroke:#0288d1,stroke-width:3px,color:#000
+    classDef stepStyle fill:#f0f4c3,stroke:#827717,stroke-width:2px,color:#000
+    classDef agentStyle fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px,color:#000
+    classDef decisionStyle fill:#fff9c4,stroke:#f57f17,stroke-width:2px,color:#000
+    classDef errorStyle fill:#ffcdd2,stroke:#c62828,stroke-width:2px,color:#000
+    classDef successStyle fill:#a5d6a7,stroke:#1b5e20,stroke-width:2px,color:#000
+    classDef loopStyle fill:#ce93d8,stroke:#6a1b9a,stroke-width:2px,color:#000
+    
+    class Phase1,Phase2,Phase3,Phase4 phaseStyle
+    class Step1_2,Step2_1,Step3_1,Step3_3 agentStyle
+    class Step1_1,Step1_3,Step1_4,Step2_2,Step2_3,Step3_4,Step3_5,Step4_2,Step4_3 stepStyle
+    class Step3_2,Step4_1,Retry1,Retry2,Retry3 decisionStyle
+    class Error1,Error2,Error3,Error4,Error5,Error6 errorStyle
+    class SetSuccess,MarkSkipAction successStyle
+    class IncrementCounter,InitCounter,MarkSkip loopStyle

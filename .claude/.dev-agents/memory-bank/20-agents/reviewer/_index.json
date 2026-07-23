@@ -1,0 +1,23 @@
+{
+  "author": "[github-user-email]",
+  "$schema_version": "1.0",
+  "description": "Reviewer agent memory: code review patterns, escalation rules, project-specific review knowledge.",
+  "owner_agent": "Reviewer",
+  "files": {},
+  "expected_files": [
+    {
+      "id": "review-rubric",
+      "author": "[github-user-email]",
+      "file": "review_rubric.json",
+      "scope": "Scoring criteria for 1-10 review score",
+      "status": "planned"
+    },
+    {
+      "id": "common-findings",
+      "author": "[github-user-email]",
+      "file": "common_findings.json",
+      "scope": "Recurring critical/suggestion items by area",
+      "status": "planned"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "_description": "Evidence-based architecture map detected from the codebase.",
+  "author": "[github-user-email]",
+  "_version": "3.0",
+  "architecture_style": "",
+  "evidence": "",
+  "dependency_flow": "",
+  "data_access": "",
+  "folder_groups": [],
+  "naming_conventions": {
+    "detected_suffixes": null,
+    "detected_prefixes": null,
+    "file_organization": "",
+    "namespace_pattern": "",
+    "author": "[github-user-email]"
+  },
+  "discovered_layers": {
+    "presentation": null,
+    "application": null,
+    "domain": null,
+    "infrastructure": null,
+    "background_jobs": null,
+    "tests": null
+  },
+  "discovery_date": "",
+  "last_updated": ""
+}

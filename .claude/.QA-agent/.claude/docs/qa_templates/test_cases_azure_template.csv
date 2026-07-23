@@ -1,0 +1,14 @@
+ID,Work Item Type,Title,Test Step,Step Action,Step Expected,Area Path,Assigned To,State
+,"Test Case","12345_TC_001_ACCOUNTS_CREATE USER_Validate a user can be created",,,,"{Area Path}","QA Owner <qa.owner@example.com>","Design"
+,,,"1","Precondition:
+* Have access to the application under test
+* Have permission to create users
+Test Data: a unique username",,,,
+,,,"2","Open the Users page and start creating a new user with the test data",,,,
+,,,"3","Save the new user","Validate the user is created and appears in the users list",,,
+,"Test Case","12345_TC_002_ACCOUNTS_CREATE USER_Validate a duplicate username is rejected",,,,"{Area Path}","QA Owner <qa.owner@example.com>","Design"
+,,,"1","Precondition:
+* Have access to the application under test
+* A user already exists with a known username",,,,
+,,,"2","Open the Users page and attempt to create a user with the existing username",,,,
+,,,"3","Save","Validate an error is shown and no duplicate user is created",,,

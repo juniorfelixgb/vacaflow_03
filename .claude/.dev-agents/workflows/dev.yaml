@@ -1,0 +1,1326 @@
+# Workflow Executable Configuration
+# This file defines the complete workflow that the Orchestrator must execute step by step
+# Format: Structured YAML for machine execution
+
+workflow:
+  name: "Complete Development Workflow"
+  version: "1.1"
+  description: "End-to-end workflow from requirements to QA sign-off"
+
+# =============================================================================
+# PHASE 0: PRE-FLIGHT CHECKS (MANDATORY - INDEPENDENT OF EXECUTION MODE)
+# =============================================================================
+phases:
+  - phase_id: 0
+    phase_name: "Pre-Flight Checks"
+    description: |
+      Validate that all required infrastructure services are available before
+      starting the workflow. These checks are MANDATORY and INDEPENDENT of
+      execution_mode — they ALWAYS run and ALWAYS block on failure.
+    execution_mode_override: "always" # Ignores execution_mode — always enforced
+
+    steps:
+      - step_id: 0.1
+        step_name: "Validate Work-Tracking MCP Server Availability"
+        type: "infrastructure_check"
+        action: "validate_work_tracking_mcp"
+        execution_mode_override: "always" # NEVER skipped regardless of execution_mode
+        description: |
+          Verify that the work-tracking platform's MCP server is running and responding.
+          This is a HARD BLOCKER — the workflow CANNOT proceed without it.
+          ALL work-tracking operations (create/read User Stories, Tasks, etc.) depend on this.
+
+        validation_method:
+          # The Orchestrator must attempt to call any lightweight read-only
+          # work-tracking MCP tool to verify the server is running.
+          # If the tool returns results → MCP is running
+          # If the tool fails/times out/is not found → MCP is NOT running
+          probe_tool: "a lightweight read-only work-tracking MCP tool"
+          probe_description: "List work-tracking projects to verify MCP connectivity"
+          timeout_seconds: 30
+
+        on_success:
+          store_variables:
+            - work_tracking_mcp_available: true
+          message: "✅ Work-tracking MCP server is running and responding."
+          next_phase: 1
+
+        on_failure:
+          action: "block_and_notify_user"
+          store_variables:
+            - work_tracking_mcp_available: false
+          retry_policy:
+            max_retries: 2
+            wait_between_retries_seconds: 10
+            on_all_retries_exhausted:
+              action: "mandatory_user_intervention"
+              message: |
+                ⛔ WORK-TRACKING MCP SERVER NOT AVAILABLE — WORKFLOW BLOCKED
+                ═══════════════════════════════════════════════════
+                The work-tracking platform's MCP server is not running.
+                This is a HARD BLOCKER — the workflow cannot proceed without it.
+
+                Please start the work-tracking MCP server as configured for your
+                editor/IDE (for example, via your editor's MCP server panel or
+                command palette, or by restarting the editor if servers auto-start).
+
+                Refer to your local MCP configuration for the server name and
+                start command.
+
+                Once the MCP server is running, please confirm so I can retry and continue the workflow.
+              wait_for_user: true # ALWAYS wait, regardless of execution_mode
+
+  # =============================================================================
+  # PHASE 1: USER STORY GENERATION
+  # =============================================================================
+  - phase_id: 1
+    phase_name: "User Story Generation"
+    description: "Create BRD and generate User Stories"
+
+    steps:
+      - step_id: 1.1
+        step_name: "Create BRD from Requirements"
+        agent: "Bsa"
+        action: "create_brd"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Analyze the provided transcript/requirements from client.
+          Create a comprehensive BRD (Business Requirements Document).
+
+          Expected output:
+          - BRD file path
+          - Summary of key requirements
+          - Functional and non-functional requirements
+
+        on_success:
+          store_variables:
+            - brd_path
+            - requirements_summary
+          next_step: 1.2
+
+        on_failure:
+          action: "stop_workflow"
+          message: "Cannot proceed without BRD"
+
+      - step_id: 1.2
+        step_name: "Generate User Story Markdown File"
+        agent: "Bsa"
+        action: "create_user_story_markdown"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Based on the BRD created in step 1.1:
+
+          Input: {{brd_path}}
+
+          Generate a comprehensive User Story markdown file and save it to docs/user-stories/.
+
+          Follow the canonical User Story template at `.dev-agents/template-docs/user-story-template.md` (single source of truth). You MAY add/remove/rename sections for clarity; record any deviation in the document's first section ("Notes on template usage").
+
+          Expected output:
+          - User Story file path (e.g., docs/user-stories/US-2026-02-16-feature-name.md)
+          - Summary of the User Story
+          - Story Points assigned
+          - Number of tasks generated
+
+        on_success:
+          store_variables:
+            - user_story_file_path
+            - user_stories_summary
+            - story_points
+            - task_count
+          next_step: 1.25
+
+        on_failure:
+          action: "retry_once"
+          fallback_step: "stop_workflow"
+
+      - step_id: 1.25
+        step_name: "UX Requirements Audit"
+        skill: "UX_Booster"
+        action: "ux_audit_plan"
+        optional: true
+        condition: "user_story contains UI/frontend features"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Read `.dev-agents/skills/UX_Booster/SKILL.md` in FULL and execute in plan mode.
+
+          Input:
+          - mode:           plan
+          - target:         {{user_story_file_path}}
+          - feature_name:   {{feature_name}}
+          - caller_agent:   workflow/dev.yaml phase-1
+
+          Analyse the acceptance criteria in the User Story for UX completeness across all 10
+          dimensions. Return a UX Requirements block to be added to the User Story and BRD.
+
+          Expected output:
+          - ux_requirements_block: markdown section ready to insert into the User Story
+          - ux_gaps: list of missing UX requirements
+          - ux_completeness_score: 1-10
+
+        on_success:
+          store_variables:
+            - ux_requirements_block
+            - ux_gaps
+            - ux_completeness_score
+          next_step: 1.3
+
+        on_skip:
+          next_step: 1.3
+
+        on_failure:
+          action: "retry_once"
+          fallback_step: "stop_workflow"
+
+      - step_id: 1.3
+        step_name: "Create User Story in the work-tracking platform"
+        agent: "Bsa (WorkItem_Operations)"
+        action: "Start work-tracking MCP server and create new User Story work item"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Create User Story in the work-tracking platform using its MCP server from the markdown file created in step 1.2.
+
+          Input: {{user_story_file_path}}
+
+
+          - Read the User Story markdown file
+          - Extract all information (title, description, acceptance criteria, tasks, story points, tags)
+          - Create User Story in the work-tracking platform using its MCP server adding full details from the markdown
+          - Create all tasks from Implementation Roadmap
+          - Link tasks to User Story
+
+          Expected output:
+          - User Story ID created in the work-tracking platform
+          - List of Task IDs created
+          - Work item URL
+
+        on_success:
+          store_variables:
+            - user_story_ids
+            - task_ids
+            - work_item_url
+          next_step: 1.4
+
+        on_failure:
+          action: "retry_once and give the user feedback on what went wrong"
+          fallback_step: "stop_workflow"
+
+      - step_id: 1.4
+        step_name: "Optional - Early QA Test Case Creation"
+        agent: "QA_Orchestrator"
+        action: "create_test_cases_early"
+        optional: true
+        ask_user: "Create QA test cases now before implementation? (yes/no)"
+
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Based on the generated User Stories from step 1.3:
+
+          Input: {{user_story_ids}}, {{user_stories_summary}}, {{user_story_file_path}}
+
+          Create comprehensive QA test cases for validation.
+
+          Expected output:
+          - Test case IDs
+          - Test scenarios created
+          - Coverage summary
+
+        on_success:
+          store_variables:
+            - test_case_ids
+            - early_tests_created: true
+          next_phase: 2
+
+        on_skip:
+          store_variables:
+            - early_tests_created: false
+          next_phase: 2
+
+  # =============================================================================
+  # PHASE 2: IMPLEMENTATION
+  # =============================================================================
+  - phase_id: 2
+    phase_name: "Implementation"
+    description: "Read User Story and implement code"
+
+    loop_state:
+      build_retry_counter: 0
+      max_build_retries: 2
+
+    steps:
+      - step_id: 2.1
+        step_name: "Read User Story Details"
+        agent: "Bsa (WorkItem_Operations)"
+        action: "read_user_story"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Read the detailed User Story from the work-tracking platform using its MCP server.
+
+          Input: {{user_story_ids[0]}}  # Read first story or iterate
+
+          Extract:
+          - Full description
+          - Acceptance criteria
+          - Technical details
+          - Dependencies
+
+          Expected output:
+          - Complete User Story information for implementation
+
+        on_success:
+          store_variables:
+            - user_story_details
+          next_step: 2.2
+
+        on_failure:
+          action: "retry_once"
+          fallback_step: "stop_workflow"
+
+      - step_id: 2.2
+        step_name: "Create Implementation Plan"
+        agent: "Bsa"
+        action: "create_implementation_plan"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Based on the User Story details from step 2.1:
+
+          Input: {{user_story_details}}
+
+          Create a detailed implementation plan document that includes:
+          - Task breakdown and objectives
+          - Technical approach and architecture decisions
+          - List of files to create/modify
+          - Step-by-step implementation sequence
+          - Testing strategy
+          - Acceptance criteria mapping
+
+          Save the plan to: docs/implementation-plans/
+
+          Expected output:
+          - Implementation plan file path
+          - Summary of planned changes
+
+        on_success:
+          store_variables:
+            - implementation_plan_path
+            - planned_changes_summary
+          next_step: 2.3
+
+        on_failure:
+          action: "retry_once"
+          fallback_step: "stop_workflow"
+
+      - step_id: 2.3
+        step_name: "Implement Requirements"
+        agent: "Coder"
+        action: "implement_code"
+        timeout_minutes: 10
+        retry_policy:
+          max_attempts: 2
+          retry_on: ["timeout", "empty_output", "validation_failed"]
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Implement the following User Story using the detailed implementation plan:
+
+          Input: 
+          - User Story Details: {{user_story_details}}
+          - Implementation Plan: {{implementation_plan_path}}
+          - Planned Changes: {{planned_changes_summary}}
+
+          Instructions:
+          1. Read the implementation plan from {{implementation_plan_path}}
+          2. Follow the step-by-step implementation sequence
+          3. Apply discovered project standards from your reference files
+          4. Generate production-ready code following Clean Code and SOLID principles
+          5. Ensure proper error handling, logging, and validation
+          6. MANDATORY: Validate builds after implementation
+
+          Expected output:
+          - List of all files created/modified (with paths)
+          - Implementation summary explaining what was done
+          - Key components created (controllers, services, repositories, etc.)
+          - Build validation status
+
+        output_validation:
+          required_fields:
+            - files_modified
+            - implementation_summary
+          min_files_modified: 1
+
+        user_validation:
+          required: "{{execution_mode}} != 'unattended'"
+          condition: "supervised|semi"
+          message: "Step 2.3 (Implementation) completed. {{files_modified.length}} files modified. Review implementation and approve to continue?"
+          wait_for_approval: "{{execution_mode}} == 'supervised' || {{execution_mode}} == 'semi'"
+
+        on_success:
+          store_variables:
+            - files_modified
+            - implementation_summary
+          next_step: 2.4
+
+        on_failure:
+          action: "stop_workflow"
+          message: "Implementation failed"
+
+      - step_id: 2.4
+        step_name: "Validate Implementation"
+        type: "validation"
+        description: "Verify implementation produced valid output and builds successfully"
+
+        validation_checks:
+          - check: "files_modified is not null"
+            error_message: "No files were modified during implementation"
+          - check: "files_modified.length > 0"
+            error_message: "Files modified list is empty"
+          - check: "implementation_summary is not null"
+            error_message: "No implementation summary provided"
+
+        build_validation:
+          required: true
+          command: "[the project's build command]"
+          working_directory: "./"
+          on_build_failure:
+            action: "read_errors_and_retry"
+            max_retries: 2
+            read_errors:
+              command: "[the project's build command]"
+              collect: "compilation_errors_and_diagnostics"
+            retry_logic:
+              - condition: "{{build_retry_counter}} < {{max_build_retries}}"
+                action: "retry_with_coder"
+                agent: "Coder"
+                instruction: |
+                  feedback_level: {{feedback_level}}
+                  execution_mode: {{execution_mode}}
+
+                  Build failed with compilation errors. Fix the following errors:
+
+                  Input:
+                  - Build Errors: {{build_errors}}
+                  - Files Modified: {{files_modified}}
+                  - Implementation Plan: {{implementation_plan_path}}
+                  - Current Retry: {{build_retry_counter}}/{{max_build_retries}}
+
+                  Instructions:
+                  1. Analyze the compilation errors carefully
+                  2. Identify the root cause of each error
+                  3. Apply fixes following project standards
+                  4. Ensure fixes don't introduce new errors
+                  5. MANDATORY: Validate builds after fixes
+
+                  Expected output:
+                  - List of errors fixed
+                  - Updated files list
+                  - Build validation status
+
+                increment: "build_retry_counter"
+                next_step: 2.4
+
+              - condition: "{{build_retry_counter}} >= {{max_build_retries}}"
+                action: "stop_workflow"
+                message: "Build failed after {{max_build_retries}} retry attempts. Manual intervention required."
+
+        user_validation:
+          required: "{{execution_mode}} != 'unattended'"
+          condition: "supervised|semi"
+          message: "Step 2.4 (Validation) completed. Implementation validated. Build successful. Proceed to Unit Test Generation?"
+          wait_for_approval: "{{execution_mode}} == 'supervised' || {{execution_mode}} == 'semi'"
+
+        on_success:
+          next_step: 2.45
+
+        on_failure:
+          action: "stop_workflow"
+          message: "Validation failed: Implementation produced invalid output. Manual review required."
+
+      - step_id: 2.44
+        step_name: "UX/UI Code Audit"
+        skill: "UX_Booster"
+        action: "ux_audit_code"
+        optional: true
+        condition: "files_modified contains frontend files (.tsx,.jsx,.vue,.html,.css,.scss)"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Read `.dev-agents/skills/UX_Booster/SKILL.md` in FULL and execute in code mode.
+
+          Input:
+          - mode:           code
+          - files_modified: {{files_modified}}
+          - feature_name:   {{qa_feature_name}}
+          - caller_agent:   workflow/dev.yaml phase-2
+
+          Evaluate UX/UI quality of the implemented frontend files across all 10 dimensions.
+          Return findings to be reviewed in Phase 3.
+
+          Expected output:
+          - ux_code_score: overall UX score 1-10
+          - ux_findings: list of UX issues with severity and improvement proposals
+          - ux_quick_wins: list of low-effort improvements
+
+        on_success:
+          store_variables:
+            - ux_code_score
+            - ux_findings
+            - ux_quick_wins
+          next_step: 2.45
+
+        on_skip:
+          next_step: 2.45
+
+        on_failure:
+          action: "log_and_continue"
+          message: "⚠️ UX_Booster skipped — no frontend files detected or skill error."
+          next_step: 2.45
+
+      - step_id: 2.45
+        step_name: "Update Codemap (Incremental)"
+        skill: "Codemap"
+        action: "update_codemap_incremental"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Read `.dev-agents/skills/Codemap/SKILL.md` in FULL and execute an incremental codemap update.
+
+          Input:
+          - mode:           incremental
+          - files_modified: {{files_modified}}
+          - caller_agent:   workflow/dev.yaml
+
+          Expected output:
+          - codemap_updated: true/false
+          - files_reindexed: list of files whose index entries were updated
+
+        on_success:
+          store_variables:
+            - codemap_updated
+            - files_reindexed
+          next_step: 2.5
+
+        on_failure:
+          action: "log_and_continue"
+          message: "⚠️ Codemap update failed — workflow continues. Run /codemap full to rebuild manually."
+          next_step: 2.5
+
+      - step_id: 2.5
+        step_name: "Generate Unit Tests"
+        agent: "Coder"
+        action: "generate_unit_tests"
+        timeout_minutes: 10
+        retry_policy:
+          max_attempts: 2
+          retry_on: ["timeout", "empty_output"]
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Generate unit tests for all new code created during implementation.
+
+          Input:
+          - User Story Details: {{user_story_details}}
+          - Files Modified: {{files_modified}}
+          - Implementation Summary: {{implementation_summary}}
+          - Implementation Plan: {{implementation_plan_path}}
+
+          Instructions:
+          1. Scan all classes/components created or modified in {{files_modified}}
+          2. Determine testability for each: service, repository, handler, utility, UI component, hook, etc.
+          3. Discover test patterns from existing test projects (naming convention, folder structure, mocking strategy)
+          4. For the backend:
+             - Create or update test files in the matching test project (e.g., the project's unit-test directory)
+             - Cover: happy path, edge cases, null/empty inputs, exception paths
+             - Mock dependencies using the project's mocking library
+             - Follow AAA pattern: Arrange / Act / Assert
+          5. For the frontend:
+             - Create or update test files co-located or in detected test folder
+             - Cover: render without errors, props validation, user interaction, conditional rendering
+             - Use the project's detected testing library
+          6. Skip ONLY when technically impossible (static config files, migration scripts, pure data models with no logic)
+          7. MANDATORY: Validate that test files compile/parse without errors using problems tool
+
+          Expected output:
+          - List of test files created/updated (with paths)
+          - Test coverage summary (classes/components tested vs skipped)
+          - Skipped items with justification
+          - Build validation status
+
+        output_validation:
+          required_fields:
+            - test_files_created
+            - test_coverage_summary
+          build_check: true
+
+        user_validation:
+          required: "{{execution_mode}} != 'unattended'"
+          condition: "supervised|semi"
+          message: "Step 2.5 (Unit Test Generation) completed. {{test_files_created.length}} test files created. Review and approve to proceed to Code Review?"
+          wait_for_approval: "{{execution_mode}} == 'supervised' || {{execution_mode}} == 'semi'"
+
+        on_success:
+          store_variables:
+            - test_files_created
+            - test_coverage_summary
+          merge_into:
+            files_modified: "{{test_files_created}}"  # Include test files in Code Review scope
+          next_phase: 3
+
+        on_failure:
+          action: "retry_once"
+          fallback_step: "stop_workflow"
+          message: "Unit test generation failed. Manual intervention required."
+
+  # =============================================================================
+  # PHASE 3: CODE REVIEW LOOP
+  # =============================================================================
+  - phase_id: 3
+    phase_name: "Code Review Loop"
+    description: "Review code quality with iterative improvements"
+    max_iterations: 5
+
+    loop_state:
+      iteration_counter: 0
+      review_score: 0
+      threshold_score: 9
+
+    steps:
+      - step_id: 3.1
+        step_name: "Code Review"
+        agent: "Reviewer"
+        action: "review_code"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Review the code changes that were just implemented.
+
+          Input:
+          - Requirements: {{user_story_details}}
+          - Files Modified: {{files_modified}}
+          - Implementation Summary: {{implementation_summary}}
+
+          Review Instructions:
+          1. Load reference files from .dev-agents/memory-bank/00-shared/references/ and the rest of .dev-agents/memory-bank/00-shared/
+          2. Check memory files (approved_patterns.json, recurring_violations.json, false_positives.json)
+          3. Analyze ONLY the changed code in the files listed in {{files_modified}}
+          4. Verify adherence to project standards and coding conventions
+          5. Identify violations categorized by severity (Critical/Suggestion/Future)
+          6. Provide code examples (Current + Suggested) for EVERY issue found
+
+          Expected output:
+          - Quality score from 1-10 (based on changed code only)
+          - Detailed review feedback with:
+            * Critical issues (block merge)
+            * Suggestions (recommended improvements)
+            * Future improvements (backlog items)
+          - For each issue: Current code + Suggested fix
+          - Decision: APPROVED / WITH OBSERVATIONS / REJECTED
+
+        output_validation:
+          required_fields:
+            - review_score
+            - review_feedback
+
+        user_validation:
+          required: "{{execution_mode}} != 'unattended'"
+          condition: "supervised|semi"
+          message: "Step 3.1 (Code Review) completed. Score: {{review_score}}/10. Review the feedback and approve to continue?"
+          wait_for_approval: "{{execution_mode}} == 'supervised' || {{execution_mode}} == 'semi'"
+
+        on_success:
+          store_variables:
+            - review_score
+            - review_feedback
+          next_step: 3.2
+
+        on_failure:
+          action: "retry_once"
+          fallback_step: "3.2"
+
+      - step_id: 3.2
+        step_name: "Evaluate Review Score"
+        type: "decision"
+        description: "Determine if code quality meets threshold or needs rework"
+
+        conditions:
+          - condition: "{{review_score}} >= {{threshold_score}}"
+            action: "exit_loop"
+            next_phase: 4
+            message: "✅ Code review passed with score {{review_score}}/10. Threshold: {{threshold_score}}/10. Proceeding to Dev Testing."
+
+          - condition: "{{iteration_counter}} >= {{max_iterations}}"
+            action: "exit_loop"
+            next_phase: 4
+            message: "⚠️ Max iterations ({{max_iterations}}) reached. Final score: {{review_score}}/10. Proceeding to testing despite not reaching threshold."
+
+          - condition: "default"
+            action: "continue_loop"
+            next_step: 3.3
+            message: "🔄 Score {{review_score}}/10 below threshold ({{threshold_score}}/10). Rework needed. Iteration {{iteration_counter}}/{{max_iterations}}"
+
+        user_validation:
+          required: false
+          message: "Decision: {{action}} - {{message}}"
+
+      - step_id: 3.3
+        step_name: "Apply Review Feedback"
+        agent: "Coder"
+        action: "fix_code"
+        timeout_minutes: 10
+        retry_policy:
+          max_attempts: 2
+          retry_on: ["timeout", "empty_output"]
+        strategy: "divide_if_complex"
+        complexity_threshold: 3
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Apply the code review feedback to improve code quality.
+
+          Input:
+          - Review Score: {{review_score}}/10
+          - Review Feedback: {{review_feedback}}
+          - Original Requirements: {{user_story_details}}
+          - Files to Fix: {{files_modified}}
+          - Current Iteration: {{iteration_counter}}/{{max_iterations}}
+
+          Instructions:
+          1. Parse the review feedback to extract all identified issues
+          2. Categorize issues by severity: Critical > Suggestions > Future
+          3. Address issues in order of priority:
+             - CRITICAL: Compilation errors, security flaws, data integrity issues
+             - SUGGESTIONS: Code quality, standards compliance, best practices
+             - FUTURE: Optimizations, refactoring opportunities
+          4. For each fix:
+             - Apply the "Suggested" code example from the review
+             - Ensure the fix doesn't break existing functionality
+             - Maintain consistency with project standards
+          5. MANDATORY: Validate builds after applying fixes
+          6. If complexity is high (>3 critical issues), use divide_strategy
+
+          IMPORTANT:
+          - Focus on addressing ALL critical issues first
+          - Provide detailed output showing progress even if not complete
+          - If build fails after a fix, revert that specific change
+          - Update memory patterns with successful fixes
+
+          Expected output:
+          - Summary of corrections applied (grouped by severity)
+          - Updated files list (files modified in this iteration)
+          - Issues addressed count (by category)
+          - Issues remaining (if any)
+          - Build validation status
+
+        divide_strategy:
+          when_issues_count: "> 3"
+          split_into:
+            - phase: "critical"
+              description: "Fix compilation errors, type mismatches, and blocking issues"
+              priority: 1
+            - phase: "security"
+              description: "Fix security vulnerabilities and validation issues"
+              priority: 2
+            - phase: "quality"
+              description: "Apply code quality improvements and standards compliance"
+              priority: 3
+
+        output_validation:
+          required_fields:
+            - corrections_summary
+            - issues_addressed
+          build_check: true
+
+        user_validation:
+          required: "{{execution_mode}} != 'unattended'"
+          condition: "supervised|semi"
+          message: "Step 3.3 (Apply Fixes) completed. {{issues_addressed.length}} issues fixed. Review changes and approve to continue?"
+          wait_for_approval: "{{execution_mode}} == 'supervised' || {{execution_mode}} == 'semi'"
+
+        on_success:
+          store_variables:
+            - files_modified # Update with new changes
+            - corrections_summary
+            - issues_addressed
+          increment: "iteration_counter"
+          next_step: 3.1 # Loop back to review
+
+        on_failure:
+          action: "stop_workflow"
+          message: "Failed to apply corrections after {{max_retry_attempts}} attempts"
+
+  # =============================================================================
+  # PHASE 4: DEV TESTING — UNIT TESTS (BACKEND + FRONTEND)
+  # =============================================================================
+  - phase_id: 4
+    phase_name: "Dev Testing - Unit Tests"
+    description: "Execute all backend and frontend unit tests to verify the implementation"
+
+    loop_state:
+      backend_tests_retry_counter: 0
+      frontend_tests_retry_counter: 0
+      max_test_retries: 1
+
+    steps:
+      - step_id: 4.1
+        step_name: "Run Backend Unit Tests"
+        type: "validation"
+        description: "Execute all backend unit test projects against the full solution"
+
+        build_validation:
+          required: true
+          command: "[the project's backend test command]"
+          working_directory: "./"
+          on_build_failure:
+            action: "read_errors_and_retry"
+            max_retries: 1
+            read_errors:
+              command: "[the project's backend test command, verbose]"
+              collect: "test_failures_and_errors"
+            retry_logic:
+              - condition: "{{backend_tests_retry_counter}} < {{max_test_retries}}"
+                action: "retry_with_coder"
+                agent: "Coder"
+                instruction: |
+                  feedback_level: {{feedback_level}}
+                  execution_mode: {{execution_mode}}
+
+                  Backend unit tests are failing. Fix the failing tests.
+
+                  Input:
+                  - Test Failures: {{backend_test_errors}}
+                  - Files Modified: {{files_modified}}
+                  - Implementation Summary: {{implementation_summary}}
+
+                  Instructions:
+                  1. Analyze each failing test and identify the root cause
+                  2. Determine if the failure is due to new code or pre-existing issues
+                  3. Fix only failures caused by the current implementation
+                  4. Ensure no regression is introduced
+                  5. Run build to confirm fixes compile correctly
+
+                  Expected output:
+                  - List of tests fixed
+                  - Root cause analysis per test
+                  - Build validation status
+
+                increment: "backend_tests_retry_counter"
+                next_step: 4.1
+
+              - condition: "{{backend_tests_retry_counter}} >= {{max_test_retries}}"
+                action: "stop_workflow"
+                message: "Backend unit tests failed after {{max_test_retries}} retry attempt(s). Manual intervention required."
+
+        user_validation:
+          required: "{{execution_mode}} != 'unattended'"
+          condition: "supervised|semi"
+          message: "Step 4.1 (Backend Unit Tests) completed. Backend: {{backend_tests_passed}} passed, {{backend_tests_failed}} failed. Proceed to Frontend Tests?"
+          wait_for_approval: "{{execution_mode}} == 'supervised' || {{execution_mode}} == 'semi'"
+
+        on_success:
+          store_variables:
+            - backend_test_results
+            - backend_tests_passed
+            - backend_tests_failed
+            - backend_test_errors
+          next_step: 4.2
+
+        on_failure:
+          action: "stop_workflow"
+          message: "Backend unit tests failed validation. Review test output."
+
+      - step_id: 4.2
+        step_name: "Run Frontend Unit Tests"
+        type: "validation"
+        description: "Execute all frontend unit tests for the frontend"
+
+        build_validation:
+          required: true
+          command: "[the project's frontend test command]"
+          working_directory: "[the frontend source directory]"
+          on_build_failure:
+            action: "read_errors_and_retry"
+            max_retries: 1
+            read_errors:
+              command: "[the project's frontend test command, verbose]"
+              collect: "frontend_test_failures_and_errors"
+              working_directory: "[the frontend source directory]"
+            retry_logic:
+              - condition: "{{frontend_tests_retry_counter}} < {{max_test_retries}}"
+                action: "retry_with_coder"
+                agent: "Coder"
+                instruction: |
+                  feedback_level: {{feedback_level}}
+                  execution_mode: {{execution_mode}}
+
+                  Frontend unit tests are failing. Fix the failing tests.
+
+                  Input:
+                  - Test Failures: {{frontend_test_errors}}
+                  - Files Modified: {{files_modified}}
+                  - Implementation Summary: {{implementation_summary}}
+
+                  Instructions:
+                  1. Analyze each failing frontend test and identify root cause
+                  2. Fix failures caused by the current implementation changes
+                  3. Do not break existing passing tests
+                  4. Ensure components/hooks/utils under test are correctly covered
+
+                  Expected output:
+                  - List of tests fixed
+                  - Updated files
+                  - Confirmation that tests pass
+
+                increment: "frontend_tests_retry_counter"
+                next_step: 4.2
+
+              - condition: "{{frontend_tests_retry_counter}} >= {{max_test_retries}}"
+                action: "stop_workflow"
+                message: "Frontend unit tests failed after {{max_test_retries}} retry attempt(s). Manual intervention required."
+
+        user_validation:
+          required: "{{execution_mode}} != 'unattended'"
+          condition: "supervised|semi"
+          message: "Step 4.2 (Frontend Unit Tests) completed. Frontend: {{frontend_tests_passed}} passed, {{frontend_tests_failed}} failed. Proceed to completion report?"
+          wait_for_approval: "{{execution_mode}} == 'supervised' || {{execution_mode}} == 'semi'"
+
+        on_success:
+          store_variables:
+            - frontend_test_results
+            - frontend_tests_passed
+            - frontend_tests_failed
+            - frontend_test_errors
+          next_step: 4.3
+
+        on_failure:
+          action: "stop_workflow"
+          message: "Frontend unit tests failed validation. Review test output."
+
+      - step_id: 4.3
+        step_name: "Generate Dev Testing Report"
+        type: "report"
+        action: "generate_dev_testing_report"
+
+        report_template: |
+          ✅ PHASE 4 COMPLETE — DEV TESTING (UNIT TESTS)
+          ------------------------------------------------
+          Implementation: ✅ {{files_modified.length}} files
+          Code Review:    ✅ Score {{review_score}}/10 ({{iteration_counter}} iterations)
+
+          🔵 Backend Unit Tests:
+          - Passed:  {{backend_tests_passed}}
+          - Failed:  {{backend_tests_failed}}
+          - Results: the backend test runner's results file
+
+          🟡 Frontend Unit Tests:
+          - Passed:  {{frontend_tests_passed}}
+          - Failed:  {{frontend_tests_failed}}
+
+          📝 Test Generation (Step 2.5):
+          - Test Files Created:   {{test_files_created}}
+          - Coverage Summary:     {{test_coverage_summary}}
+
+          Summary:
+          - Implementation Plan: {{implementation_plan_path}}
+          - Files Modified: {{files_modified}}
+
+        user_validation:
+          required: "{{execution_mode}} != 'unattended'"
+          condition: "supervised|semi"
+          message: "Step 4.3 (Dev Testing Report) generated. Phase 4 complete. Proceed to Phase 5 (QA Validation - E2E Tests)?"
+          wait_for_approval: "{{execution_mode}} == 'supervised' || {{execution_mode}} == 'semi'"
+
+        on_success:
+          store_variables:
+            - dev_testing_report
+          next_phase: 5
+
+  # =============================================================================
+  # PHASE 5: QA VALIDATION — PLAYWRIGHT E2E TESTS
+  # =============================================================================
+  - phase_id: 5
+    phase_name: "QA Validation - E2E Tests"
+    description: |
+      Execute the QA E2E workflow (qa.yaml) via QA_Orchestrator.
+      Subagents E2E_Plan, E2E_Generate, and E2E_Heal plan, create, execute, and fix
+      E2E tests based on the scenarios defined by Coder and Reviewer.
+
+    steps:
+      - step_id: 5.1
+        step_name: "Prepare QA Context from Implementation"
+        type: "action"
+        agent: "Bsa"
+        action: "prepare_qa_context"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Consolidate the implementation and review outputs into a QA context document
+          that QA_Orchestrator will use to drive E2E test creation.
+
+          Input:
+          - User Story Details:      {{user_story_details}}
+          - Files Modified:          {{files_modified}}
+          - Implementation Summary:  {{implementation_summary}}
+          - Review Feedback:         {{review_feedback}}
+          - Review Score:            {{review_score}}/10
+          - Dev Testing Report:      {{dev_testing_report}}
+
+          Instructions:
+          1. Extract all acceptance criteria from {{user_story_details}}
+          2. Identify every scenario covered or validated by Coder (from {{implementation_summary}})
+          3. Include edge cases and negative paths flagged by Reviewer (from {{review_feedback}})
+          4. Map each scenario to testable E2E interactions (UI flows, API responses, permissions)
+          5. List the UI components and API endpoints affected by {{files_modified}}
+          6. Produce a concise QA context document in Markdown format
+
+          Expected output:
+          - qa_context_file_path: path to saved Markdown document (docs/user-stories/<feature>-qa-context.md)
+          - qa_scenarios_summary: short list of E2E scenarios to be tested
+          - feature_name: the feature identifier to pass to QA_Orchestrator
+
+        on_success:
+          store_variables:
+            - qa_context_file_path
+            - qa_scenarios_summary
+            - qa_feature_name
+          next_step: 5.2
+
+        on_failure:
+          action: "retry_once"
+          fallback: "stop_workflow"
+          message: "Failed to prepare QA context. Review implementation and review outputs."
+
+      - step_id: 5.2
+        step_name: "Execute QA E2E Workflow"
+        agent: "QA_Orchestrator"
+        action: "execute_qa_e2e_workflow"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Execute the full QA E2E workflow defined in:
+          `.dev-agents/workflows/qa.yaml`
+
+          Input:
+          - QA Context Document:   {{qa_context_file_path}}
+          - Feature Name:          {{qa_feature_name}}
+          - Scenarios to Cover:    {{qa_scenarios_summary}}
+          - Implementation Plan:   {{implementation_plan_path}}
+          - Files Modified:        {{files_modified}}
+          - User Story Details:    {{user_story_details}}
+
+          Execution Instructions:
+          1. Load the QA E2E workflow (qa.yaml) from `.dev-agents/workflows/`
+          2. Start at PHASE 1 (Requirement Analysis & Test Planning) using {{qa_context_file_path}} as input
+          3. Call E2E_Plan to create a comprehensive E2E test plan covering ALL {{qa_scenarios_summary}}
+          4. Call E2E_Generate to implement E2E test code in the E2E tests directory
+          5. Execute the tests; if any fail, call E2E_Heal to diagnose and fix them
+          6. Repeat fix cycle up to 3 times (as defined in qa.yaml)
+          7. Collect final test execution results
+
+          Quality Gate:
+          - All acceptance criteria scenarios MUST have at least one passing E2E test
+          - Critical scenarios from Reviewer feedback MUST be covered
+          - Auto-skip only tests that are blocked by environment constraints (not by code bugs)
+
+          Expected output:
+          - qa_e2e_plan_path: path to saved test plan document
+          - qa_e2e_test_file: path to generated E2E test spec file
+          - qa_e2e_tests_passed: number of E2E tests that passed
+          - qa_e2e_tests_failed: number of E2E tests that failed
+          - qa_e2e_tests_skipped: number of tests marked as skip
+          - qa_defects: list of defects found that require developer attention
+          - qa_recommendation: overall QA recommendation (PASS / FAIL / PASS_WITH_NOTES)
+
+        user_validation:
+          required: "{{execution_mode}} != 'unattended'"
+          condition: "supervised|semi"
+          message: "Step 5.2 (E2E QA) completed. E2E: {{qa_e2e_tests_passed}} passed, {{qa_e2e_tests_failed}} failed, {{qa_e2e_tests_skipped}} skipped. Review and approve to finalize?"
+          wait_for_approval: "{{execution_mode}} == 'supervised' || {{execution_mode}} == 'semi'"
+
+        on_success:
+          store_variables:
+            - qa_e2e_plan_path
+            - qa_e2e_test_file
+            - qa_e2e_tests_passed
+            - qa_e2e_tests_failed
+            - qa_e2e_tests_skipped
+            - qa_defects
+            - qa_recommendation
+          next_step: 5.3
+
+        on_failure:
+          action: "stop_workflow"
+          message: "QA E2E workflow failed to execute. Review QA_Orchestrator output."
+
+      - step_id: 5.3
+        step_name: "Final QA Sign-Off and Workflow Summary"
+        type: "report"
+        action: "generate_final_summary"
+
+        report_template: |
+          🎉 COMPLETE WORKFLOW FINISHED
+          ===================================
+
+          📋 PHASE 1: User Story Generation
+          - BRD Created:              {{brd_path}}
+          - User Story Markdown:      {{user_story_file_path}}
+          - Work Item:                {{work_item_url}}
+          - User Story ID:            {{user_story_ids[0]}}
+          - Story Points:             {{story_points}}
+          - Tasks Created:            {{task_count}}
+          - Early Test Cases:         {{early_tests_created ? 'Yes' : 'No'}}
+
+          💻 PHASE 2: Implementation
+          - Files Modified:           {{files_modified.length}}
+          - Implementation Plan:      {{implementation_plan_path}}
+          - Test Files Created:       {{test_files_created.length}}
+          - Test Coverage:            {{test_coverage_summary}}
+
+          🔍 PHASE 3: Code Review
+          - Final Score:              {{review_score}}/10
+          - Iterations:               {{iteration_counter}}
+
+          🧪 PHASE 4: Unit Tests
+          - Backend:                  {{backend_tests_passed}} passed / {{backend_tests_failed}} failed
+          - Frontend:                 {{frontend_tests_passed}} passed / {{frontend_tests_failed}} failed
+
+          ✅ PHASE 5: QA E2E
+          - Test Plan:                {{qa_e2e_plan_path}}
+          - Test File:                {{qa_e2e_test_file}}
+          - E2E Tests Passed:         {{qa_e2e_tests_passed}}
+          - E2E Tests Failed:         {{qa_e2e_tests_failed}}
+          - E2E Tests Skipped:        {{qa_e2e_tests_skipped}}
+          - Defects Found:            {{qa_defects.length}}
+          - QA Recommendation:        {{qa_recommendation}}
+
+          📊 OVERALL STATUS: {{qa_recommendation == 'PASS' || qa_recommendation == 'PASS_WITH_NOTES' ? '✅ SUCCESS' : '❌ NEEDS ATTENTION'}}
+
+          📁 ARTIFACTS:
+          - BRD:                      {{brd_path}}
+          - User Story MD:            {{user_story_file_path}}
+          - Work Item:                {{work_item_url}}
+          - Implementation Plan:      {{implementation_plan_path}}
+          - QA Test Plan:             {{qa_e2e_plan_path}}
+          - QA Test Spec:             {{qa_e2e_test_file}}
+
+        on_success:
+          store_variables:
+            - final_summary_report
+          next_phase: 6
+
+  # =============================================================================
+  # PHASE 6: DOCUMENTATION UPDATE
+  # =============================================================================
+  - phase_id: 6
+    phase_name: "Documentation Update"
+    description: |
+      Synchronize project documentation with all changes produced in this workflow.
+      The Update_Docs skill scans files_modified, classifies the change surface, and
+      updates/creates docs in docs/ — including API docs, architecture notes,
+      feature docs, and the changelog.
+
+    steps:
+      - step_id: 6.1
+        step_name: "Update Project Documentation"
+        skill: "Update_Docs"
+        action: "update_docs"
+        instruction: |
+          feedback_level: {{feedback_level}}
+          execution_mode: {{execution_mode}}
+
+          Read `.dev-agents/skills/Update_Docs/SKILL.md` in FULL and execute a full documentation
+          synchronization for all changes produced by this workflow.
+
+          Input:
+          - files_modified:          {{files_modified}}
+          - implementation_summary:  {{implementation_summary}}
+          - feature_name:            {{qa_feature_name}}
+          - user_story_id:           {{user_story_ids[0]}}
+          - doc_scope:               full
+          - caller_agent:            workflow/dev.yaml
+
+          Additional context available (use if relevant):
+          - BRD:                     {{brd_path}}
+          - User Story Markdown:     {{user_story_file_path}}
+          - Implementation Plan:     {{implementation_plan_path}}
+          - Review Score:            {{review_score}}/10
+          - QA Recommendation:       {{qa_recommendation}}
+          - QA E2E Plan:             {{qa_e2e_plan_path}}
+
+          Expected output:
+          - docs_updated: list of documentation files updated or created
+          - changelog_updated: true/false
+          - gaps_flagged: list of documentation gaps (ADR needed, etc.)
+
+        user_validation:
+          required: "{{execution_mode}} != 'unattended'"
+          condition: "supervised|semi"
+          message: "Step 6.1 (Documentation Update) completed. Review updated docs and approve to finalize?"
+          wait_for_approval: "{{execution_mode}} == 'supervised' || {{execution_mode}} == 'semi'"
+
+        on_success:
+          store_variables:
+            - docs_updated
+            - changelog_updated
+            - gaps_flagged
+          next_step: 6.2
+
+        on_failure:
+          action: "log_and_continue"
+          message: "⚠️ Documentation update failed — workflow still complete. Review docs manually."
+          next_step: 6.2
+
+      - step_id: 6.2
+        step_name: "Final Sign-Off"
+        type: "report"
+        action: "end_workflow"
+
+        report_template: |
+          ✅ WORKFLOW COMPLETE
+          ====================
+          All phases executed successfully.
+
+          📚 Documentation:
+          - Files Updated:  {{docs_updated}}
+          - Changelog:      {{changelog_updated ? 'Updated' : 'No changelog entry needed'}}
+          - Gaps Flagged:   {{gaps_flagged.length > 0 ? gaps_flagged : 'None'}}
+
+          Refer to Step 5.3 report for full implementation summary.
+
+        on_success:
+          action: "end_workflow"
+          message: "Workflow completed successfully. All phases executed."
+
+# =============================================================================
+# WORKFLOW METADATA & RULES
+# =============================================================================
+execution_rules:
+  autonomous: false # Require user validation at critical steps (per MANDATORY rule in Orchestrator.md)
+  user_validation_mode: "conditional" # Validation depends on execution_mode variable:
+  # - unattended: skip ALL user_validation pauses, proceed automatically
+  # - supervised: enforce ALL user_validation pauses, wait for approval
+  # - semi: enforce user_validation only at steps marked condition: "supervised|semi"
+  stop_on_critical_failure: true
+  allow_retries: true
+  max_retry_attempts: 1
+  log_all_steps: true
+  track_execution_time: true
+  pause_on_validation: true # When execution_mode = supervised, wait for user approval
+  feedback_level: limited # Controls verbosity of agent responses: full | limited | minimal
+  execution_mode: semi    # Controls user intervention: unattended | supervised | semi
+
+error_handling:
+  agent_failure:
+    - log_error: true
+    - retry_once: true
+    - if_still_failing: "stop_workflow_and_report"
+
+  incomplete_results:
+    - action: "retry_agent_with_clarification"
+    - max_attempts: 2
+
+  critical_bugs_found:
+    - action: "report_to_user"
+    - suggestion: "manual_intervention_required"
+
+variables:
+  # These variables are populated during execution
+
+  # PRE-FLIGHT: Infrastructure validation
+  work_tracking_mcp_available: false # Set to true after Phase 0 validates MCP is running
+
+  # GLOBAL: Feedback verbosity level
+  # Accepted values: "full" | "limited" | "minimal"
+  # Default: "limited"
+  # How to set: include in your prompt → "full feedback", "limited feedback", or "minimal feedback"
+  #
+  # full    → All details: step summaries, agent outputs, reasoning, tables, code excerpts
+  # limited → Phase-level summaries, key decisions, important findings, essential outputs
+  # minimal → Only critical confirmations, final results and errors — no intermediate details
+  feedback_level: "limited"
+
+  # GLOBAL: Execution mode - user intervention control
+  # Accepted values: "unattended" | "supervised" | "semi"
+  # Default: "semi"
+  # How to set: include in your prompt → "unattended", "supervised", or "semi"
+  #
+  # unattended → Complete workflow without pausing for user confirmations
+  # supervised → Pause after each step and wait for explicit user approval
+  # semi       → Proceed autonomously, pause only on ambiguity or high-risk decisions
+  execution_mode: "semi"
+
+  # PHASE 1: User Story Generation
+  brd_path: null
+  requirements_summary: null
+  user_story_file_path: null
+  story_points: null
+  task_count: 0
+  user_story_ids: []
+  task_ids: []
+  work_item_url: null
+  user_stories_summary: null
+  test_case_ids: []
+  early_tests_created: false
+
+  # PHASE 2: Implementation
+  user_story_details: null
+  implementation_plan_path: null
+  planned_changes_summary: null
+  files_modified: []
+  implementation_summary: null
+  build_retry_counter: 0
+  build_errors: null
+  test_files_created: []
+  test_coverage_summary: null
+
+  # PHASE 3: Code Review Loop
+  iteration_counter: 0
+  review_score: 0
+  review_feedback: null
+  corrections_summary: null
+  issues_addressed: []
+
+  # PHASE 4: Dev Testing — Unit Tests (Backend + Frontend)
+  backend_tests_retry_counter: 0
+  frontend_tests_retry_counter: 0
+  backend_test_results: null
+  backend_tests_passed: 0
+  backend_tests_failed: 0
+  backend_test_errors: null
+  frontend_test_results: null
+  frontend_tests_passed: 0
+  frontend_tests_failed: 0
+  frontend_test_errors: null
+  dev_testing_report: null
+
+  # PHASE 5: QA Validation — E2E
+  qa_context_file_path: null
+  qa_scenarios_summary: null
+  qa_feature_name: null
+  qa_e2e_plan_path: null
+  qa_e2e_test_file: null
+  qa_e2e_tests_passed: 0
+  qa_e2e_tests_failed: 0
+  qa_e2e_tests_skipped: 0
+  qa_defects: []
+  qa_recommendation: null

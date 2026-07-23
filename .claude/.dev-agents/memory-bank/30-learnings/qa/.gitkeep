@@ -1,0 +1,5 @@
+# Reserved for promoted QA learnings.
+#
+# When a QA lesson from .github/memory/20-agents/qa/ proves stable across multiple
+# sessions and is validated by the Reviewer, promote it here as a focused Markdown
+# file (one pattern per file), following the same convention as 30-learnings/coder/.

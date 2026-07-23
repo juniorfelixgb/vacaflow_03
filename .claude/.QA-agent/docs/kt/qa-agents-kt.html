@@ -1,0 +1,979 @@
+<title>QA Agents — Knowledge Transfer</title>
+<meta name="description" content="Knowledge Transfer for the QA team: what the Claude Code QA agents are, what we have, how they work, when to use them, and the flows — from zero, on the road from Manual QA to QA SDET.">
+<style>
+  :root{
+    --ink:#0E1620; --ink-soft:#1B2735;
+    --ground:#F4F6F8; --card:#FFFFFF; --card-alt:#EEF2F5;
+    --border:#DCE3EA; --border-strong:#C2CCD6;
+    --muted:#5A6675; --muted-soft:#7C8794;
+    --accent:#0E8A93; --accent-bright:#14B3BE; --accent-ink:#0A565C;
+    --good:#2F9E5E; --good-bg:#E7F4EC;
+    --warn:#B8790A; --warn-bg:#FBF1DD;
+    --crit:#C0392B; --crit-bg:#FAE8E5;
+    --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    --mono:"Cascadia Code","Consolas",ui-monospace,"SFMono-Regular",monospace;
+    --maxw:1080px;
+    --topbar-h:48px;
+    --r:10px;
+    --shadow:0 1px 2px rgba(14,22,32,.04),0 6px 20px rgba(14,22,32,.06);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+    font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  /* ---------- top bar ---------- */
+  .topbar{position:sticky;top:0;z-index:60;background:rgba(14,22,32,.96);
+    backdrop-filter:saturate(140%) blur(6px);color:#fff;border-bottom:1px solid #243140;}
+  .topbar .inner{max-width:var(--maxw);margin:0 auto;padding:.6rem 1.25rem;
+    display:flex;align-items:center;gap:1rem;justify-content:space-between;min-height:var(--topbar-h)}
+  .brand{font-family:var(--mono);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent-bright);white-space:nowrap}
+  .brand b{color:#fff;font-weight:600}
+  .topnav{display:flex;gap:.1rem;flex-wrap:wrap;justify-content:flex-end}
+  .topnav a{font-family:var(--mono);font-size:.72rem;color:#9fb0bf;text-decoration:none;
+    padding:.2rem .45rem;border-radius:5px}
+  .topnav a:hover,.topnav a:focus-visible{color:#fff;background:#243140;outline:none}
+  .pres-toggle{font-family:var(--mono);font-size:.72rem;font-weight:600;letter-spacing:.06em;
+    color:#04282b;background:var(--accent-bright);border:none;border-radius:6px;
+    padding:.35rem .7rem;cursor:pointer;white-space:nowrap}
+  .pres-toggle:hover{background:#3ccfd9}
+  .pres-toggle:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  .progress{height:2px;background:var(--accent-bright);width:0;transition:width .12s linear}
+  @media (max-width:860px){.topnav{display:none}}
+
+  /* ---------- layout ---------- */
+  section{max-width:var(--maxw);margin:0 auto;padding:3.6rem 1.5rem 1rem;}
+  .eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent-ink);display:flex;align-items:center;gap:.6rem;margin-bottom:.9rem}
+  .eyebrow .num{color:var(--accent);font-weight:700}
+  .eyebrow .line{flex:1;height:1px;background:var(--border-strong)}
+  h1{font-size:clamp(2.1rem,5vw,3.3rem);line-height:1.05;letter-spacing:-.02em;font-weight:700;
+    text-wrap:balance;margin:.2rem 0}
+  h2{font-size:clamp(1.5rem,3vw,2.05rem);line-height:1.12;letter-spacing:-.015em;font-weight:700;
+    text-wrap:balance;margin:.1rem 0 .8rem}
+  h3{font-size:1.05rem;margin:0 0 .35rem;letter-spacing:-.01em}
+  p{margin:.5rem 0;max-width:70ch}
+  .lead{font-size:1.14rem;color:var(--ink-soft);max-width:66ch}
+  strong{font-weight:650}
+  em{color:var(--accent-ink);font-style:normal;font-weight:600}
+  code{font-family:var(--mono);font-size:.86em;background:var(--card-alt);border:1px solid var(--border);
+    border-radius:5px;padding:.06em .4em;color:var(--accent-ink)}
+
+  /* ---------- hero ---------- */
+  .hero{background:
+      radial-gradient(120% 90% at 88% -10%,#16323a 0%,rgba(22,50,58,0) 55%),
+      linear-gradient(180deg,#0E1620 0%,#10202c 100%);
+    color:#EAF1F4;max-width:none;padding:0;}
+  .hero .wrap{max-width:var(--maxw);margin:0 auto;padding:3.6rem 1.5rem 3rem}
+  .hero h1{color:#fff}
+  .hero .kicker{font-family:var(--mono);font-size:.8rem;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--accent-bright);margin-bottom:1.1rem}
+  .hero .lead{color:#B7C6CF;font-size:1.2rem;margin-top:1rem}
+  .hero .thesis{border-left:3px solid var(--accent-bright);padding-left:1rem;margin:1.6rem 0 0;
+    font-size:1.02rem;color:#D6E2E8;max-width:62ch}
+  .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;
+    margin-top:2.2rem}
+  .stat{background:rgba(255,255,255,.04);border:1px solid #25323f;border-radius:var(--r);
+    padding:1rem 1.1rem}
+  .stat .v{font-family:var(--mono);font-size:1.9rem;font-weight:700;color:#fff;
+    font-variant-numeric:tabular-nums;line-height:1}
+  .stat .l{font-size:.8rem;color:#9fb0bf;margin-top:.45rem;line-height:1.3}
+  .agenda{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:2rem}
+  .chip{font-family:var(--mono);font-size:.72rem;letter-spacing:.04em;color:#cfe0e6;
+    background:rgba(255,255,255,.05);border:1px solid #2a3a49;border-radius:999px;padding:.3rem .7rem}
+
+  /* ---------- cards & grids ---------- */
+  .grid{display:grid;gap:1rem;margin-top:1.4rem}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(225px,1fr))}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+    padding:1.2rem 1.3rem;box-shadow:var(--shadow)}
+  .card .ic{font-family:var(--mono);font-size:.72rem;color:var(--accent);font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem;display:flex;gap:.5rem;align-items:center}
+  .card .cmd{font-family:var(--mono);font-size:.9rem;color:var(--accent-ink);font-weight:700;
+    background:var(--card-alt);border:1px solid var(--border);border-radius:6px;
+    padding:.2rem .5rem;display:inline-block;margin-bottom:.55rem}
+  .card p{font-size:.94rem;color:var(--muted);margin:.25rem 0 0}
+  .card .ex{font-family:var(--mono);font-size:.78rem;color:var(--accent-ink);margin-top:.7rem;
+    background:#f2f8f8;border:1px dashed var(--border-strong);border-radius:6px;padding:.4rem .55rem;
+    word-break:break-word}
+  .card .ex b{color:var(--muted-soft);font-weight:600}
+
+  /* ---------- concept row ---------- */
+  .concepts{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.4rem}
+  @media (max-width:720px){.concepts{grid-template-columns:1fr}}
+  .concept{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+    padding:1.3rem;box-shadow:var(--shadow);text-align:left}
+  .concept .em{font-size:1.8rem;line-height:1}
+  .concept h3{margin-top:.7rem}
+  .concept .role{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--accent);font-weight:700;margin-top:.2rem}
+  .concept p{font-size:.92rem;color:var(--muted);margin-top:.5rem}
+
+  /* ---------- tables ---------- */
+  .tablewrap{overflow-x:auto;margin-top:1.4rem;border:1px solid var(--border);border-radius:var(--r);
+    box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;background:var(--card);font-size:.9rem;min-width:560px}
+  th,td{text-align:left;padding:.62rem .85rem;border-bottom:1px solid var(--border);vertical-align:top}
+  thead th{background:var(--ink);color:#dfe7ec;font-size:.72rem;letter-spacing:.07em;
+    text-transform:uppercase;font-weight:600;position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:nth-child(even){background:var(--card-alt)}
+  td.mono,th.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  td .tag-cmd{font-family:var(--mono);color:var(--accent-ink);font-weight:600}
+
+  /* ---------- callout ---------- */
+  .callout{margin-top:1.4rem;background:linear-gradient(180deg,#fff,#f7fafb);
+    border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--r);
+    padding:1.1rem 1.3rem;box-shadow:var(--shadow)}
+  .callout .ck{font-family:var(--mono);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--accent-ink);font-weight:700;margin-bottom:.4rem}
+  .callout p{margin:.2rem 0;font-size:.95rem;color:var(--ink-soft);max-width:76ch}
+  .callout.warn{border-left-color:var(--warn);background:linear-gradient(180deg,#fff,#fffaf0)}
+  .callout.warn .ck{color:#8a5b06}
+
+  /* ---------- flow strip ---------- */
+  .flowwrap{overflow-x:auto;margin-top:1.4rem;padding-bottom:.6rem}
+  .flow{display:flex;align-items:stretch;gap:0;min-width:680px}
+  .node{flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;
+    padding:.75rem .7rem;box-shadow:var(--shadow);position:relative;min-width:96px}
+  .node + .node{margin-left:1.5rem}
+  .node + .node::before{content:"\203A";position:absolute;left:-1.15rem;top:50%;transform:translateY(-50%);
+    color:var(--accent);font-size:1.3rem;font-weight:700;font-family:var(--mono)}
+  .node .nn{font-family:var(--mono);font-size:.68rem;color:var(--accent);font-weight:700;letter-spacing:.04em}
+  .node .nt{font-size:.82rem;font-weight:650;margin:.25rem 0 .3rem;letter-spacing:-.01em}
+  .node .nq{font-size:.74rem;color:var(--muted);line-height:1.35}
+  .node.gate{border-color:var(--accent);background:linear-gradient(180deg,#fff,#eef8f9)}
+  .node .gatepin{display:inline-block;font-family:var(--mono);font-size:.64rem;font-weight:700;
+    color:#022a2d;background:var(--accent-bright);border-radius:4px;padding:.05rem .3rem;margin-top:.35rem}
+
+  /* ---------- gate pills ---------- */
+  .gates{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.3rem}
+  .gate{font-family:var(--mono);font-size:.76rem;font-weight:600;padding:.32rem .55rem;border-radius:6px;
+    background:var(--ink);color:#cfe0e6;border:1px solid #243140}
+  .gate.key{background:var(--accent);color:#022a2d;border-color:var(--accent-bright)}
+
+  /* ---------- phase cards (qa-loop) ---------- */
+  .phases{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:1.5rem}
+  @media (max-width:720px){.phases{grid-template-columns:1fr;gap:1rem}}
+  .pcard{position:relative;padding:1.2rem 1.15rem;background:var(--card);border:1px solid var(--border);
+    box-shadow:var(--shadow)}
+  .phases .pcard:first-child{border-radius:var(--r) 0 0 var(--r)}
+  .phases .pcard:last-child{border-radius:0 var(--r) var(--r) 0}
+  @media (max-width:720px){.pcard,.phases .pcard:first-child,.phases .pcard:last-child{border-radius:var(--r)}}
+  .pcard .pk{font-family:var(--mono);font-size:.72rem;color:var(--accent);font-weight:700;letter-spacing:.06em}
+  .pcard .pt{font-size:1.02rem;font-weight:700;margin:.3rem 0}
+  .pcard .pmax{font-family:var(--mono);font-size:.72rem;color:var(--warn);background:var(--warn-bg);
+    display:inline-block;padding:.1rem .4rem;border-radius:5px;margin-bottom:.5rem}
+  .pcard p{font-size:.88rem;color:var(--muted);margin:.3rem 0 0}
+  .pcard .gateline{margin-top:.7rem;font-family:var(--mono);font-size:.72rem;color:var(--accent-ink);font-weight:700}
+
+  /* ---------- two-col ---------- */
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.4rem}
+  @media (max-width:680px){.twocol{grid-template-columns:1fr}}
+  .panel{border-radius:var(--r);padding:1.2rem 1.3rem;border:1px solid var(--border);box-shadow:var(--shadow);background:#fff}
+  .panel h3{font-size:.92rem;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);color:var(--muted)}
+  .panel.old h3{color:var(--muted)}
+  .panel.new{background:var(--good-bg);border-color:#cfe7d8}
+  .panel.new h3{color:#1d6b3f}
+  .panel ul{margin:.6rem 0 0;padding-left:1.1rem}
+  .panel li{font-size:.92rem;margin:.4rem 0;color:var(--ink-soft)}
+
+  /* ---------- ladder ---------- */
+  .ladder{display:flex;flex-direction:column;gap:.5rem;margin-top:1.5rem}
+  .rung{display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;
+    background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1.1rem;
+    box-shadow:var(--shadow)}
+  .rung .lv{font-family:var(--mono);font-weight:700;font-size:.78rem;color:#fff;border-radius:6px;
+    padding:.4rem .6rem;white-space:nowrap;text-align:center;min-width:74px}
+  .rung .lv small{display:block;font-size:.6rem;font-weight:600;opacity:.85;letter-spacing:.04em}
+  .rung h3{margin:0;font-size:1rem}
+  .rung p{margin:.2rem 0 0;font-size:.88rem;color:var(--muted)}
+  .lv0{background:#7C8794}.lv1{background:#4f9aa0}.lv2{background:var(--accent)}
+  .lv3{background:var(--accent-ink)}.lv4{background:#063b40}
+
+  /* ---------- step list ---------- */
+  .steps{counter-reset:st;display:flex;flex-direction:column;gap:.8rem;margin-top:1.5rem}
+  .step{display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:start;
+    background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.2rem;
+    box-shadow:var(--shadow)}
+  .step::before{counter-increment:st;content:counter(st);font-family:var(--mono);font-weight:700;
+    background:var(--accent);color:#022a2d;width:2rem;height:2rem;border-radius:50%;display:flex;
+    align-items:center;justify-content:center;font-size:.95rem}
+  .step h3{margin:0 0 .15rem;font-size:1rem}
+  .step p{margin:0;font-size:.9rem;color:var(--muted)}
+  .step pre{margin:.5rem 0 0;font-family:var(--mono);font-size:.8rem;background:var(--ink);color:#cfe0e6;
+    border-radius:6px;padding:.5rem .7rem;overflow-x:auto}
+
+  /* ---------- glossary ---------- */
+  .gloss{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem 1.6rem;margin-top:1.4rem}
+  @media (max-width:680px){.gloss{grid-template-columns:1fr}}
+  .gterm{border-bottom:1px solid var(--border);padding-bottom:.6rem}
+  .gterm dt{font-family:var(--mono);font-weight:700;color:var(--accent-ink);font-size:.86rem}
+  .gterm dd{margin:.2rem 0 0;font-size:.86rem;color:var(--muted);line-height:1.45}
+
+  /* ---------- link cards ---------- */
+  .links{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:1.4rem}
+  .linkcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+    padding:1.1rem 1.2rem;box-shadow:var(--shadow)}
+  .linkcard .lt{font-family:var(--mono);font-size:.82rem;color:var(--accent-ink);font-weight:700;word-break:break-all}
+  .linkcard p{font-size:.86rem;color:var(--muted);margin:.4rem 0 0}
+
+  /* ---------- footer ---------- */
+  .foot{max-width:var(--maxw);margin:2.5rem auto 0;padding:1.6rem 1.5rem 3rem;color:var(--muted-soft);
+    font-size:.82rem;border-top:1px solid var(--border)}
+
+  /* ---------- reveal ---------- */
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+
+  /* ---------- presentation mode ---------- */
+  .present-controls{display:none}
+  body.present{overflow:hidden}
+  body.present #deck > section{display:none}
+  body.present #deck > section.active-slide{display:block;height:calc(100vh - var(--topbar-h));
+    overflow-y:auto;max-width:none;padding:0}
+  body.present #deck > section.active-slide > .wrap,
+  body.present #deck > section.active-slide > .inner-slide{max-width:var(--maxw);margin:0 auto;
+    padding:2.4rem 1.5rem 4rem;min-height:100%}
+  body.present .reveal{opacity:1;transform:none}
+  body.present .present-controls{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:70;
+    align-items:center;justify-content:center;gap:1rem;padding:.55rem;
+    background:rgba(14,22,32,.94);border-top:1px solid #243140;color:#cfe0e6}
+  .present-controls button{font-family:var(--mono);font-size:.8rem;font-weight:600;cursor:pointer;
+    background:#243140;color:#fff;border:1px solid #34465a;border-radius:6px;padding:.35rem .8rem}
+  .present-controls button:hover{background:#2f4255}
+  .present-controls button:focus-visible{outline:2px solid var(--accent-bright);outline-offset:2px}
+  .present-controls .ctr{font-family:var(--mono);font-size:.82rem;font-variant-numeric:tabular-nums;
+    min-width:70px;text-align:center;color:#9fb0bf}
+  body.present .topnav{display:none}
+
+  @media print{
+    .topbar,.present-controls{display:none}.reveal{opacity:1;transform:none}
+    section{padding:1.2rem 0;break-inside:avoid;max-width:none}
+    .hero{color:#000;background:#fff}.hero h1,.hero .lead,.hero .thesis{color:#000}
+  }
+</style>
+
+<header class="topbar">
+  <div class="inner">
+    <span class="brand">QA&nbsp;AGENTS&nbsp;<b>· Knowledge Transfer</b></span>
+    <nav class="topnav" aria-label="Sections">
+      <a href="#mental">Model</a>
+      <a href="#picture">Inventory</a>
+      <a href="#lanes">Lanes</a>
+      <a href="#commands">Commands</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#hitl">HITL</a>
+      <a href="#start">Start</a>
+      <a href="#path">Your path</a>
+    </nav>
+    <button class="pres-toggle" id="presToggle" aria-pressed="false">▶ Present</button>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<main id="deck">
+
+  <!-- ============ 00 HERO ============ -->
+  <section class="hero" id="hero">
+    <div class="wrap">
+      <div class="kicker">QA Knowledge Transfer · KT-001 · scope: <code style="background:rgba(255,255,255,.06);border-color:#2a3a49;color:#cfe0e6">.claude/</code> toolkit</div>
+      <h1>The QA Agents,<br>from zero.</h1>
+      <p class="lead">We built a set of QA agents inside Claude Code. This session explains what
+        they are, what we have, how they work, when to use them — and how they turn the way we
+        test from <em>writing every test by hand</em> into <em>directing and approving</em> the work.</p>
+      <p class="thesis">The destination is a role upgrade: <strong>Manual QA → QA SDET</strong>.
+        Same testing judgment you already have — now amplified by agents that do the heavy lifting,
+        with you approving every important decision.</p>
+
+      <div class="statgrid">
+        <div class="stat"><div class="v">7</div><div class="l">commands (orchestrators)</div></div>
+        <div class="stat"><div class="v">20</div><div class="l">skills (capabilities)</div></div>
+        <div class="stat"><div class="v">2</div><div class="l">subagents (specialists)</div></div>
+        <div class="stat"><div class="v">37</div><div class="l">canonical rule docs</div></div>
+        <div class="stat"><div class="v">3</div><div class="l">test lanes</div></div>
+        <div class="stat"><div class="v">1</div><div class="l">config file (no hardcoding)</div></div>
+      </div>
+
+      <div class="agenda">
+        <span class="chip">What is an "agent"?</span>
+        <span class="chip">The toolbox</span>
+        <span class="chip">The 3 lanes</span>
+        <span class="chip">How a run works</span>
+        <span class="chip">Human gates</span>
+        <span class="chip">Day in the life</span>
+        <span class="chip">Get started</span>
+        <span class="chip">Your path to SDET</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 01 WHY ============ -->
+  <section id="why" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">01</span> Why this exists <span class="line"></span></div>
+      <h2>The cost of writing tests collapsed. The job changed.</h2>
+      <p class="lead">Traditional QA was designed for a world where automating a test was slow and
+        expensive. AI changed that. The bottleneck is no longer <em>typing</em> the test — it's
+        deciding what to test, validating it with human judgment, and closing the loop.</p>
+
+      <div class="twocol">
+        <div class="panel old">
+          <h3>Traditional QA</h3>
+          <ul>
+            <li>Write each test by hand, line by line</li>
+            <li>Automation is a separate, scarce specialty</li>
+            <li>Coverage tracked in spreadsheets</li>
+            <li>Flaky tests fixed reactively, one by one</li>
+            <li>QA enters late, at the "testing phase"</li>
+          </ul>
+        </div>
+        <div class="panel new">
+          <h3>AI-native QA (what we have)</h3>
+          <ul>
+            <li>Agents draft tests; <strong>you direct and approve</strong></li>
+            <li>Every QA can drive automation through plain requests</li>
+            <li>Coverage enforced automatically (gate stops at gaps)</li>
+            <li>Failures diagnosed and healed by a dedicated agent</li>
+            <li>QA shifts left (early) and right (production feedback)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout">
+        <div class="ck">The one idea to keep</div>
+        <p>Your testing judgment is the steering wheel; the agents are the engine. You spend less time
+          on boilerplate and more on the high-value work only a tester can do — deciding what to test,
+          and judging whether the result is truly right.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 02 MENTAL MODEL ============ -->
+  <section id="mental" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">02</span> Mental model <span class="line"></span></div>
+      <h2>What is an "agent", really?</h2>
+      <p class="lead">It all runs inside <strong>Claude Code</strong> (the AI assistant in our editor).
+        The toolkit gives Claude three kinds of building blocks. One analogy: cooking.</p>
+
+      <div class="concepts">
+        <div class="concept">
+          <div class="em">📋</div>
+          <h3>Command</h3>
+          <div class="role">The recipe</div>
+          <p>A slash command like <code>/qa-lane regression</code>. It's an ordered procedure that drives a
+            whole job from start to finish and pulls in the right skills at each step.</p>
+        </div>
+        <div class="concept">
+          <div class="em">🧩</div>
+          <h3>Skill</h3>
+          <div class="role">The technique</div>
+          <p>A reusable capability like writing a feature file or choosing a good locator. Commands
+            (and Claude) call skills; skills know <em>the rules</em>.</p>
+        </div>
+        <div class="concept">
+          <div class="em">🔬</div>
+          <h3>Subagent</h3>
+          <div class="role">The specialist you call in</div>
+          <p>A focused worker (review, healing) that runs in its own room so its noisy details don't
+            clutter your chat — and reports back a clean verdict.</p>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="ck">Two things that make it trustworthy</div>
+        <p><strong>Config-driven:</strong> paths, commands and thresholds live in one file
+          (<code>docs/qa-config.yaml</code>) — nothing is hardcoded. <strong>Human-gated:</strong> the
+          agents stop at checkpoints and wait for your <em>Approve / Edit / Reject</em> before doing
+          anything that matters.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 03 BIG PICTURE ============ -->
+  <section id="picture" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">03</span> The big picture <span class="line"></span></div>
+      <h2>What we actually have</h2>
+      <p class="lead">Everything lives in one self-contained <code>.claude/</code> folder you copy into
+        a project. Here is the whole inventory.</p>
+
+      <div class="grid g3">
+        <div class="card"><div class="ic">Commands</div><h3>7 orchestrators</h3><p>Slash commands that run jobs end-to-end and enforce the gates.</p></div>
+        <div class="card"><div class="ic">Skills</div><h3>20 capabilities</h3><p>Reusable techniques: authoring, coverage, healing, data, security, metrics…</p></div>
+        <div class="card"><div class="ic">Subagents</div><h3>2 specialists</h3><p><code>qa-reviewer</code> and <code>qa-healer</code> run heavy work in isolation.</p></div>
+        <div class="card"><div class="ic">Reference rules</div><h3>37 canonical docs</h3><p>The single source of truth for every standard. Rules live <em>here only</em>.</p></div>
+        <div class="card"><div class="ic">Config</div><h3>1 config file</h3><p><code>docs/qa-config.yaml</code> — paths, commands, thresholds, stack, policy.</p></div>
+        <div class="card"><div class="ic">Lanes</div><h3>3 test lanes</h3><p><code>regression</code> (pom-spec) · <code>acceptance</code> (bdd-gherkin) · <code>api</code> (api-request, opt-in). Page objects shared across them.</p></div>
+      </div>
+
+      <div class="flowwrap">
+        <div class="flow" style="min-width:560px">
+          <div class="node"><div class="nn">CONFIG</div><div class="nt">qa-config.yaml</div><div class="nq">one file — read first by everything</div></div>
+          <div class="node"><div class="nn">RUN</div><div class="nt">Commands</div><div class="nq">orchestrate the workflow</div></div>
+          <div class="node"><div class="nn">APPLY</div><div class="nt">Skills + Subagents</div><div class="nq">do the work using the rules</div></div>
+          <div class="node"><div class="nn">DEFINE</div><div class="nt">Reference rules</div><div class="nq">the standards, changed in one place</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 04 ARCHITECTURE ============ -->
+  <section id="arch" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">04</span> How it's built <span class="line"></span></div>
+      <h2>Three layers, and one golden rule</h2>
+      <p class="lead">You don't need to memorize this — but knowing the shape explains why the agents
+        stay consistent and easy to change.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Layer</th><th>Role</th><th>Analogy</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Commands</strong></td><td>Thin orchestrators — route work, enforce gates</td><td>The recipe</td><td class="mono">/qa-lane acceptance</td></tr>
+            <tr><td><strong>Skills</strong></td><td>Thin wrappers that apply the rules to do a task</td><td>The technique</td><td class="mono">gherkin-authoring</td></tr>
+            <tr><td><strong>Reference docs</strong></td><td>Canonical rules — the only place a rule is written</td><td>The cookbook</td><td class="mono">gherkin-standards.md</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <div class="ck">Golden rule — "rules live once"</div>
+        <p>If a standard changes (say, a new locator strategy), it is updated in
+          <code>.claude/docs/reference/</code> <strong>only</strong> — never copied into a command or a
+          skill. That is why the whole toolkit stays in sync and never contradicts itself.</p>
+      </div>
+      <div class="callout warn">
+        <div class="ck">And never hardcode</div>
+        <p>Paths, Playwright project names, run commands, env-var lists and thresholds all come from
+          <code>docs/qa-config.yaml</code>. Move the toolkit to a new project, edit one file, and it works.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 05 LANES ============ -->
+  <section id="lanes" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">05</span> The three lanes <span class="line"></span></div>
+      <h2>Pick the lane that matches the work</h2>
+      <p class="lead">A "lane" is a track of automation with its own folder, output style and pipeline. A
+        lane's <strong>name is a free label</strong> — its <code>style</code>
+        (<code>pom-spec</code> | <code>bdd-gherkin</code> | <code>api-request</code>) is what decides the
+        pipeline, read from <code>docs/qa-config.yaml</code>. The <strong>page objects are shared</strong>,
+        so work in one lane benefits the others.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Lane (example)</th><th>Style</th><th>Use it for</th><th>Produces</th><th>Command</th></tr></thead>
+          <tbody>
+            <tr><td><strong>regression</strong></td><td class="mono">pom-spec</td><td>Automating manual cases, sprint regression, smoke</td><td>Page objects + <code>*.spec.ts</code> (Arrange-Act-Assert)</td><td class="mono">/qa-lane regression</td></tr>
+            <tr><td><strong>acceptance</strong></td><td class="mono">bdd-gherkin</td><td>Acceptance scenarios in business language</td><td><code>*.feature</code> files + step definitions</td><td class="mono">/qa-lane acceptance</td></tr>
+            <tr><td><strong>api</strong> (opt-in)</td><td class="mono">api-request</td><td>REST endpoints, contracts, no browser</td><td><code>*.api.spec.ts</code> using the request fixture</td><td class="mono">/qa-lane api</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flowwrap">
+        <div class="flow" style="min-width:540px">
+          <div class="node"><div class="nn">SHARED</div><div class="nt">Page Objects</div><div class="nq">one set of UI building blocks</div></div>
+          <div class="node"><div class="nn">regression</div><div class="nt">pom-spec specs</div><div class="nq">UI-Tests project</div></div>
+          <div class="node"><div class="nn">acceptance</div><div class="nt">bdd-gherkin features + steps</div><div class="nq">BDD-Acceptance project</div></div>
+          <div class="node"><div class="nn">api</div><div class="nt">api-request specs</div><div class="nq">API-Tests project (no POM)</div></div>
+        </div>
+      </div>
+      <p style="font-size:.86rem;color:var(--muted-soft);margin-top:.8rem">A lane never edits another lane's owned zone — the isolation zone is derived from its <code>style</code>, never its name — but every <code>pom-spec</code>/<code>bdd-gherkin</code> lane may extend the shared page objects.</p>
+    </div>
+  </section>
+
+  <!-- ============ 06 COMMANDS ============ -->
+  <section id="commands" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">06</span> The commands <span class="line"></span></div>
+      <h2>Your toolbox — all 7</h2>
+      <p class="lead">Start every session at <code>/qa-orchestrator</code>. It reads the config, checks
+        the repo, and routes you to the right place.</p>
+
+      <h3 style="margin-top:1.4rem;color:var(--accent-ink);font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase">Entry points</h3>
+      <div class="grid g3">
+        <div class="card"><span class="cmd">/qa-orchestrator</span><p>Central router + gate enforcer. Sends your work to the right lane.</p><div class="ex"><b># example</b><br>/qa-orchestrator 6628938</div></div>
+        <div class="card"><span class="cmd">/qa-task</span><p>Run <em>any</em> request as short, approve-as-you-go blocks (plan → approve → do → summarize).</p><div class="ex"><b># example</b><br>/qa-task "improve the login page object"</div></div>
+        <div class="card"><span class="cmd">/qa-setup</span><p>Onboard a project: ask intake questions, verify the environment, generate the config at <strong>CP-1</strong>.</p><div class="ex"><b># first time</b><br>/qa-setup</div></div>
+      </div>
+
+      <h3 style="margin-top:1.4rem;color:var(--accent-ink);font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase">Test lanes — one command, dispatched by <code>style</code></h3>
+      <div class="grid g3">
+        <div class="card"><span class="cmd">/qa-lane regression</span><p>style <code>pom-spec</code>: ADO → coverage → page objects → specs → run → heal.</p><div class="ex"><b># example</b><br>/qa-lane regression "Login module"</div></div>
+        <div class="card"><span class="cmd">/qa-lane acceptance</span><p>style <code>bdd-gherkin</code>: ADO → Gherkin → page objects → steps → generate → run → heal.</p><div class="ex"><b># example</b><br>/qa-lane acceptance 6628938</div></div>
+        <div class="card"><span class="cmd">/qa-lane api</span><p>style <code>api-request</code> (request fixture, no browser). Enabled only if the API lane is on.</p><div class="ex"><b># example</b><br>/qa-lane api "POST /orders"</div></div>
+      </div>
+
+      <h3 style="margin-top:1.4rem;color:var(--accent-ink);font-family:var(--mono);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase">Pipeline &amp; reporting</h3>
+      <div class="grid g3">
+        <div class="card"><span class="cmd">/qa-loop</span><p>Autonomous 3-phase pipeline for one work item: generate → implement → heal, with a review gate between phases.</p><div class="ex"><b># example</b><br>/qa-loop 6628938</div></div>
+        <div class="card"><span class="cmd">/qa-release-report</span><p>Release quality report + go/no-go decision at <strong>CP-SIGNOFF</strong>.</p><div class="ex"><b># before go-live</b><br>/qa-release-report</div></div>
+        <div class="card" style="border-style:dashed"><span class="cmd">/qa-docs</span><p>SDLC QA documentation pipeline (strategy, plan, cases, UAT, report). <em>Separate KT — out of scope today.</em></p><div class="ex"><b># covered later</b><br>/qa-docs</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 07 SKILLS ============ -->
+  <section id="skills" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">07</span> The skills <span class="line"></span></div>
+      <h2>20 capabilities, grouped by job</h2>
+      <p class="lead">You rarely call a skill by name — commands activate them, and Claude picks the
+        right one from your request. Good to know what's in the box.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Group</th><th>Skills</th><th>What they do</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Authoring</strong></td><td class="mono">gherkin-authoring · page-object-authoring · spec-authoring · locator-strategy · api-testing</td><td>Write features, page objects, specs and API tests using semantic locators.</td></tr>
+            <tr><td><strong>Coverage &amp; quality gates</strong></td><td class="mono">coverage-matrix · reviewer · failure-healing</td><td>Map AC→tests, run the 3-level review, diagnose and fix failures.</td></tr>
+            <tr><td><strong>Manual &amp; defects</strong></td><td class="mono">manual-test-design · bug-reporting</td><td>Design manual TCs / exploratory charters; write severity-classified bug reports.</td></tr>
+            <tr><td><strong>Data &amp; security</strong></td><td class="mono">test-data · security-accessibility</td><td>Data isolation, PII, cleanup; dependency/DAST/WCAG scans.</td></tr>
+            <tr><td><strong>Insight</strong></td><td class="mono">metrics · observability</td><td>Aggregate quality data; shift-right production feedback &amp; canary thresholds.</td></tr>
+            <tr><td><strong>Pipeline &amp; hygiene</strong></td><td class="mono">cicd · clean-code</td><td>Generate pipelines &amp; PR gates; end-of-cycle test-code refactor (proposal-only).</td></tr>
+            <tr><td><strong>Workflow &amp; docs</strong></td><td class="mono">hitl-workflow · sdlc-visual-docs · ado-fetch · qa-testing-strategy-architect</td><td>Run the human-gated cadence, present clean output, pull ADO items, shape strategy.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <div class="ck">Manual QAs: two skills work with no slash command</div>
+        <p>Just type your need in chat. <strong>Manual test design</strong> — "design manual test cases
+          for story 6628938". <strong>Bug reporting</strong> — "I found a bug: …". Same coverage
+          discipline as automation, no code required.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 08 SUBAGENTS ============ -->
+  <section id="subagents" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">08</span> The subagents <span class="line"></span></div>
+      <h2>Two specialists that work in their own room</h2>
+      <p class="lead">Some jobs are noisy — lots of stack traces and retries. Subagents run them in an
+        isolated context and hand back a short, clean report, so your chat stays readable.</p>
+
+      <div class="grid g2">
+        <div class="card">
+          <div class="ic">🔍 qa-reviewer · gate CP-3</div>
+          <h3>Quality review before merge</h3>
+          <p>Runs the three-level review — static analysis, mutation testing, execution validation —
+            and returns a verdict with findings classified BLOCKER / CRITICAL / MAJOR / MINOR.
+            <strong>Reports only; never edits code.</strong> A BLOCKER fails the wave.</p>
+        </div>
+        <div class="card">
+          <div class="ic">🩹 qa-healer · gate CP-4</div>
+          <h3>Diagnose &amp; fix failing tests</h3>
+          <p>Classifies each failure (LOC / STR / TIME / MISS / MTH / IMP), applies the minimum fix,
+            re-runs, up to 3 attempts per test. Unresolved tests escalate — a real app bug becomes a
+            bug report, not a weakened assertion.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 09 WAVE PIPELINE ============ -->
+  <section id="pipeline" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">09</span> How a lane run works <span class="line"></span></div>
+      <h2>The wave pipeline</h2>
+      <p class="lead">Every lane command follows the same shape. A "wave" is one batch of test cases
+        (max 10) so reviews stay human-sized.</p>
+
+      <div class="flowwrap">
+        <div class="flow">
+          <div class="node"><div class="nn">1</div><div class="nt">Context</div><div class="nq">scan existing POMs &amp; tests</div></div>
+          <div class="node"><div class="nn">2</div><div class="nt">ADO fetch</div><div class="nq">pull the work item &amp; AC</div></div>
+          <div class="node gate"><div class="nn">3</div><div class="nt">Coverage</div><div class="nq">map AC → tests</div><span class="gatepin">CP-AC</span></div>
+          <div class="node"><div class="nn">4</div><div class="nt">Author</div><div class="nq">page objects + specs</div></div>
+          <div class="node"><div class="nn">5</div><div class="nt">Run</div><div class="nq">execute the wave</div></div>
+          <div class="node gate"><div class="nn">6</div><div class="nt">Heal</div><div class="nq">fix failures</div><span class="gatepin">CP-4</span></div>
+          <div class="node gate"><div class="nn">7</div><div class="nt">Review</div><div class="nq">merge gate</div><span class="gatepin">CP-3</span></div>
+          <div class="node"><div class="nn">8</div><div class="nt">Wave done</div><div class="nq">summary + next wave</div></div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="ck">The gates that protect quality</div>
+        <p><strong>100% AC coverage</strong> — the run hard-stops if any acceptance criterion would be
+          left uncovered. <strong>Max 10 test cases per wave</strong> — bigger work is split.
+          <strong>PR checkpoint</strong> between waves when enabled.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 10 HITL ============ -->
+  <section id="hitl" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">10</span> Human-in-the-loop <span class="line"></span></div>
+      <h2>You approve everything that matters</h2>
+      <p class="lead">No surprise edits. Every request runs as short blocks, and the agent stops at
+        checkpoints (CP-NN) and waits for your decision: <em>Approve · Edit · Reject</em>.</p>
+
+      <div class="flowwrap">
+        <div class="flow" style="min-width:620px">
+          <div class="node"><div class="nn">0</div><div class="nt">Intake</div><div class="nq">restate the goal</div></div>
+          <div class="node"><div class="nn">1</div><div class="nt">Clarify</div><div class="nq">ask questions in one batch</div></div>
+          <div class="node gate"><div class="nn">2</div><div class="nt">Plan</div><div class="nq">show the ToDo list</div><span class="gatepin">CP-TODO</span></div>
+          <div class="node"><div class="nn">3</div><div class="nt">Execute</div><div class="nq">work, pausing on each write</div></div>
+          <div class="node gate"><div class="nn">4</div><div class="nt">Summary</div><div class="nq">what changed + next step</div><span class="gatepin">CP-BLOCK</span></div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:1.6rem">The checkpoint catalog</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Gate</th><th>Raised by</th><th>It approves…</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">CP-1</td><td>/qa-setup</td><td>The architecture contract (stack, strategy, structure) before any lane runs.</td></tr>
+            <tr><td class="mono">CP-TODO</td><td>/qa-task</td><td>The ToDo list before any work in a block starts.</td></tr>
+            <tr><td class="mono">CP-AC</td><td>coverage-matrix</td><td>That acceptance criteria are complete before designing tests.</td></tr>
+            <tr><td class="mono">CP-PII</td><td>test-data</td><td>Handling personally identifiable information before any PII data is created.</td></tr>
+            <tr><td class="mono">CP-3</td><td>qa-reviewer</td><td>Code review / merge after static + mutation + execution checks.</td></tr>
+            <tr><td class="mono">CP-4</td><td>qa-healer</td><td>The fixes applied to failing tests.</td></tr>
+            <tr><td class="mono">CP-5</td><td>bug-reporting</td><td>Creating a bug in the tracker from a finding.</td></tr>
+            <tr><td class="mono">CP-6</td><td>observability</td><td>Turning on shift-right production monitoring.</td></tr>
+            <tr><td class="mono">CP-CLEAN</td><td>clean-code</td><td>A refactor changeset before it is applied.</td></tr>
+            <tr><td class="mono">CP-CANARY</td><td>cicd / observability</td><td>Advancing canary traffic to the next phase.</td></tr>
+            <tr><td class="mono">CP-BLOCK</td><td>/qa-task</td><td>A completed block before the next one begins.</td></tr>
+            <tr><td class="mono">CP-SIGNOFF</td><td>/qa-release-report</td><td>The release go / no-go decision.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 11 QA-LOOP ============ -->
+  <section id="loop" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">11</span> The autonomous pipeline <span class="line"></span></div>
+      <h2><code>/qa-loop</code> — generate → implement → heal</h2>
+      <p class="lead">When you want the whole job done for one work item, <code>/qa-loop</code> runs three
+        phases on its own and stops for your review <strong>between</strong> phases (never mid-phase).</p>
+
+      <div class="phases">
+        <div class="pcard">
+          <div class="pk">PHASE 1</div>
+          <div class="pt">Test-case generation</div>
+          <div class="pmax">max 5 iterations</div>
+          <p>From an ADO item, a PBI, or an existing feature: build the coverage list and close gaps to 100%.</p>
+          <div class="gateline">↓ Gate: Approve / Reject / Stop</div>
+        </div>
+        <div class="pcard">
+          <div class="pk">PHASE 2</div>
+          <div class="pt">Implementation</div>
+          <div class="pmax">max 3 iterations / wave</div>
+          <p>Reuse &amp; extend page objects and steps, implement, run, apply minimum healing, then qa-reviewer checks the wave.</p>
+          <div class="gateline">↓ Gate: Approve / Reject / Skip / Stop</div>
+        </div>
+        <div class="pcard">
+          <div class="pk">PHASE 3</div>
+          <div class="pt">Healing</div>
+          <div class="pmax">max 3 attempts / test</div>
+          <p>qa-healer takes the remaining failures, fixes per the taxonomy, and escalates anything unresolved.</p>
+          <div class="gateline">↓ Gate: Approve / Reject / Stop</div>
+        </div>
+      </div>
+      <p style="font-size:.86rem;color:var(--muted-soft);margin-top:1rem">Each phase writes a log
+        (<code>phase1-generation.md</code>, <code>phase2-implementation.md</code>,
+        <code>phase3-healing.md</code>) and the run ends with a final summary.</p>
+    </div>
+  </section>
+
+  <!-- ============ 12 DAY IN THE LIFE ============ -->
+  <section id="day" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">12</span> A day in the life <span class="line"></span></div>
+      <h2>Three real situations</h2>
+
+      <div class="grid g3">
+        <div class="card">
+          <div class="ic">Scenario A</div>
+          <h3>New regression from an ADO story</h3>
+          <p class="ex" style="margin-top:.6rem"><b>1</b> /qa-orchestrator 6628938<br>
+            <b>2</b> → routes to /qa-lane regression<br>
+            <b>3</b> coverage matrix → CP-AC<br>
+            <b>4</b> page objects + specs<br>
+            <b>5</b> run → heal (CP-4)<br>
+            <b>6</b> review (CP-3) → wave done</p>
+        </div>
+        <div class="card">
+          <div class="ic">Scenario B</div>
+          <h3>Acceptance BDD feature</h3>
+          <p class="ex" style="margin-top:.6rem"><b>1</b> /qa-orchestrator "Sign-up flow"<br>
+            <b>2</b> → routes to /qa-lane acceptance<br>
+            <b>3</b> coverage (BDD) → CP-AC<br>
+            <b>4</b> .feature + steps + POM<br>
+            <b>5</b> bddgen + run → heal (CP-4)<br>
+            <b>6</b> review (CP-3) → wave done</p>
+        </div>
+        <div class="card">
+          <div class="ic">Scenario C</div>
+          <h3>A failing test</h3>
+          <p class="ex" style="margin-top:.6rem"><b>1</b> /qa-task "fix TC-001 timeout"<br>
+            <b>2</b> intake + plan → CP-TODO<br>
+            <b>3</b> diagnose (TIME class)<br>
+            <b>4</b> apply minimum fix<br>
+            <b>5</b> re-run → passes<br>
+            <b>6</b> summary → CP-BLOCK</p>
+        </div>
+      </div>
+      <div class="callout">
+        <div class="ck">When in doubt</div>
+        <p>Know it's a test-automation job? Use <code>/qa-orchestrator</code>. Open-ended task,
+          improvement or question? Use <code>/qa-task</code>. They hand off to each other freely.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 13 GET STARTED ============ -->
+  <section id="start" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">13</span> Get started <span class="line"></span></div>
+      <h2>From zero to your first run</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div>
+            <h3>Clone the project and install</h3>
+            <p>Get the repo that already contains the <code>.claude/</code> toolkit.</p>
+            <pre>git clone &lt;repository-url&gt;
+cd your-project
+npm install</pre>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h3>Configure your <code>.env</code></h3>
+            <p>Credentials and URLs come from environment variables — never hardcoded.</p>
+            <pre>cp .env.example .env
+# set URL, USERNAME, PASSWORD (and AZURE_DEVOPS_PAT if you use ADO)</pre>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h3>Run <code>/qa-setup</code> → approve at CP-1</h3>
+            <p>On a new project it asks intake questions and generates the single
+              <code>docs/qa-config.yaml</code>; on a configured one it verifies your environment.</p>
+            <pre>/qa-setup</pre>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h3>Start working from the orchestrator</h3>
+            <p>Begin every session here; run your first ad-hoc task with <code>/qa-task</code>.</p>
+            <pre>/qa-orchestrator
+/qa-task "design manual test cases for story 6628938"</pre>
+          </div>
+        </div>
+      </div>
+      <div class="callout">
+        <div class="ck">Full walk-through</div>
+        <p>See <code>docs/QA-SDET-QUICKSTART.md</code> for the zero-to-first-run guide, and
+          <code>docs/QA-AGENTS-GUIDE.md</code> for the deep reference (lanes, troubleshooting, examples).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 14 PATH ============ -->
+  <section id="path" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">14</span> Your path <span class="line"></span></div>
+      <h2>Manual QA → QA SDET</h2>
+      <p class="lead">You don't jump straight to writing frameworks. You climb — and the agents carry
+        most of the weight at every rung.</p>
+
+      <div class="ladder">
+        <div class="rung"><div class="lv lv0">LVL 0<small>today</small></div><div><h3>Manual QA</h3><p>You analyze AC, design test cases, execute, and report bugs by hand.</p></div></div>
+        <div class="rung"><div class="lv lv1">LVL 1</div><div><h3>Agent-assisted manual</h3><p>Use chat skills: <code>manual-test-design</code> and <code>bug-reporting</code>. Same job, far faster, with coverage gates.</p></div></div>
+        <div class="rung"><div class="lv lv2">LVL 2</div><div><h3>Directed automation</h3><p>Drive <code>/qa-orchestrator</code> and <code>/qa-loop</code>. You approve at each gate; agents write the tests.</p></div></div>
+        <div class="rung"><div class="lv lv3">LVL 3</div><div><h3>Lane owner</h3><p>Own a lane: read/adjust page objects &amp; specs, run reviews and healing, manage waves and PRs.</p></div></div>
+        <div class="rung"><div class="lv lv4">LVL 4<small>SDET</small></div><div><h3>QA SDET</h3><p>Shape strategy &amp; config, tune gates, wire CI/CD and observability, mentor the team.</p></div></div>
+      </div>
+
+      <h3 style="margin-top:1.6rem">Same outcome — manual today, agent-driven tomorrow</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>What you do today (manual)</th><th>Same outcome with agents</th><th>Skill to learn</th></tr></thead>
+          <tbody>
+            <tr><td>Read a story and write test cases</td><td>"design manual test cases for 6628938"</td><td class="mono">manual-test-design</td></tr>
+            <tr><td>Log a defect with repro steps</td><td>"I found a bug: …" → review at CP-5</td><td class="mono">bug-reporting</td></tr>
+            <tr><td>Check every AC is covered</td><td>Coverage matrix auto-stops on gaps</td><td class="mono">coverage-matrix</td></tr>
+            <tr><td>Automate a regression case</td><td class="mono">/qa-lane regression 6628938</td><td class="mono">spec-authoring</td></tr>
+            <tr><td>Re-test after a fix</td><td>qa-healer diagnoses &amp; re-runs</td><td class="mono">failure-healing</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 15 GLOSSARY ============ -->
+  <section id="glossary" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">15</span> Glossary &amp; cheat sheet <span class="line"></span></div>
+      <h2>The words you'll hear</h2>
+
+      <dl class="gloss">
+        <div class="gterm"><dt>POM</dt><dd>Page Object Model — UI screens wrapped as reusable classes so tests read clean and locators live in one place.</dd></div>
+        <div class="gterm"><dt>BDD / Gherkin</dt><dd>Behaviour-Driven Development. Scenarios written in plain Given/When/Then language in <code>.feature</code> files.</dd></div>
+        <div class="gterm"><dt>AAA</dt><dd>Arrange-Act-Assert — the three-part shape of a clean test: set up, do the action, check the result.</dd></div>
+        <div class="gterm"><dt>Locator priority</dt><dd>getByRole → getByLabel → getByTestId → getByText → CSS. Never XPath, <code>nth()</code> or <code>first()</code>.</dd></div>
+        <div class="gterm"><dt>Lane</dt><dd>A track of automation with its own folder, command and output. Its name is a free label — its <code>style</code> (pom-spec / bdd-gherkin / api-request) decides the pipeline.</dd></div>
+        <div class="gterm"><dt>Wave</dt><dd>One batch of up to 10 test cases, kept small so each review fits a human screen.</dd></div>
+        <div class="gterm"><dt>Coverage matrix</dt><dd>The AC → test-case mapping. The gate that blocks if any criterion is uncovered.</dd></div>
+        <div class="gterm"><dt>Mutation testing</dt><dd>Deliberately breaking the code to confirm your tests would catch it — a quality check on the tests themselves.</dd></div>
+        <div class="gterm"><dt>Healing taxonomy</dt><dd>LOC (locator), STR (missing step), TIME (timeout), MISS (missing data), MTH (missing method), IMP (test-code bug).</dd></div>
+        <div class="gterm"><dt>CP-NN</dt><dd>A checkpoint — the agent pauses for your Approve / Edit / Reject before continuing.</dd></div>
+        <div class="gterm"><dt>ADO</dt><dd>Azure DevOps — where work items, acceptance criteria and bugs live.</dd></div>
+        <div class="gterm"><dt>Shift-left / shift-right</dt><dd>Test earlier (requirements/design) and learn later (production monitoring &amp; feedback).</dd></div>
+      </dl>
+
+      <h3 style="margin-top:1.6rem">Cheat sheet — "I want to… → run…"</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>I want to…</th><th>Run</th></tr></thead>
+          <tbody>
+            <tr><td>Start a session / route my work</td><td class="mono">/qa-orchestrator</td></tr>
+            <tr><td>Do any task with approvals as I go</td><td class="mono">/qa-task "…"</td></tr>
+            <tr><td>Set up or verify a project</td><td class="mono">/qa-setup</td></tr>
+            <tr><td>Automate a lane (style decides POM / Gherkin / API)</td><td class="mono">/qa-lane &lt;lane-name&gt; &lt;ADO|module|feature|endpoint&gt;</td></tr>
+            <tr><td>Run the full pipeline for one item</td><td class="mono">/qa-loop &lt;ADO|PBI&gt;</td></tr>
+            <tr><td>Design manual cases / report a bug</td><td>just describe it in chat</td></tr>
+            <tr><td>Produce a release go/no-go</td><td class="mono">/qa-release-report</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 16 NEXT ============ -->
+  <section id="next" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">16</span> Where to go next <span class="line"></span></div>
+      <h2>Keep these four open</h2>
+
+      <div class="links">
+        <div class="linkcard"><div class="lt">docs/QA-SDET-QUICKSTART.md</div><p>Your zero-to-first-run guide. Read this first, then run <code>/qa-setup</code>.</p></div>
+        <div class="linkcard"><div class="lt">docs/QA-AGENTS-GUIDE.md</div><p>The deep reference: every command, all lanes, troubleshooting, examples.</p></div>
+        <div class="linkcard"><div class="lt">.claude/docs/reference/</div><p>The 37 canonical rule docs. The source of truth for every standard.</p></div>
+        <div class="linkcard"><div class="lt">business-case/deck-qa-sdet.html</div><p>The leadership business case for the QA → SDET move (why &amp; ROI).</p></div>
+      </div>
+
+      <div class="callout" style="margin-top:1.8rem">
+        <div class="ck">The habit that makes this safe</div>
+        <p>The agents never act behind your back. At every checkpoint you decide:
+          <strong>Approve</strong> to continue, <strong>Edit</strong> to adjust, <strong>Reject</strong>
+          to stop. You stay in control — you just stop typing the boilerplate.</p>
+      </div>
+
+      <p style="margin-top:1.4rem;font-size:1.05rem;color:var(--ink-soft)"><strong>Questions?</strong>
+        That's the rest of this session. Welcome to QA SDET.</p>
+    </div>
+    <div class="foot">QA Agents — Knowledge Transfer · KT-001 · scope: <code>.claude/</code> toolkit
+      (SDLC documentation flow covered separately) · counts verified against the repo:
+      7 commands · 20 skills · 2 subagents · 37 reference docs.</div>
+  </section>
+
+</main>
+
+<div class="present-controls" aria-hidden="false">
+  <button id="prevBtn" aria-label="Previous slide">◀ Prev</button>
+  <span class="ctr" id="counter">1 / 1</span>
+  <button id="nextBtn" aria-label="Next slide">Next ▶</button>
+  <button id="exitBtn" aria-label="Exit presentation mode">Exit</button>
+</div>
+
+<script>
+(function(){
+  var deck = document.getElementById('deck');
+  var slides = Array.prototype.slice.call(deck.querySelectorAll(':scope > section'));
+  var progress = document.getElementById('progress');
+  var counter = document.getElementById('counter');
+  var presToggle = document.getElementById('presToggle');
+  var cur = 0;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  function animateBars(scope){
+    (scope||document).querySelectorAll('.fill[data-w]').forEach(function(f){ f.style.width = f.dataset.w + '%'; });
+  }
+  function isPresent(){ return document.body.classList.contains('present'); }
+
+  function scrollProgress(){
+    var h = document.documentElement;
+    var denom = (h.scrollHeight - h.clientHeight) || 1;
+    return Math.min(100, Math.max(0, h.scrollTop / denom * 100));
+  }
+  window.addEventListener('scroll', function(){ if(!isPresent()) progress.style.width = scrollProgress() + '%'; }, {passive:true});
+
+  function showSlide(i){
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function(s, idx){ s.classList.toggle('active-slide', idx === cur); });
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+    progress.style.width = ((cur + 1) / slides.length * 100) + '%';
+    var active = slides[cur];
+    active.scrollTop = 0;
+    animateBars(active);
+    active.focus({preventScroll:true});
+  }
+  function enterPresent(){
+    document.body.classList.add('present');
+    presToggle.textContent = '✕ Exit';
+    presToggle.setAttribute('aria-pressed','true');
+    showSlide(cur);
+  }
+  function exitPresent(){
+    document.body.classList.remove('present');
+    presToggle.textContent = '▶ Present';
+    presToggle.setAttribute('aria-pressed','false');
+    progress.style.width = scrollProgress() + '%';
+    slides[cur].scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'start'});
+  }
+  presToggle.addEventListener('click', function(){ isPresent() ? exitPresent() : enterPresent(); });
+  document.getElementById('prevBtn').addEventListener('click', function(){ showSlide(cur - 1); });
+  document.getElementById('nextBtn').addEventListener('click', function(){ showSlide(cur + 1); });
+  document.getElementById('exitBtn').addEventListener('click', exitPresent);
+
+  document.addEventListener('keydown', function(e){
+    if(!isPresent()) return;
+    if(e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' '){ showSlide(cur + 1); e.preventDefault(); }
+    else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ showSlide(cur - 1); e.preventDefault(); }
+    else if(e.key === 'Escape'){ exitPresent(); }
+    else if(e.key === 'Home'){ showSlide(0); e.preventDefault(); }
+    else if(e.key === 'End'){ showSlide(slides.length - 1); e.preventDefault(); }
+  });
+
+  // nav links jump to slide while presenting
+  document.querySelectorAll('.topnav a').forEach(function(a){
+    a.addEventListener('click', function(e){
+      if(!isPresent()) return;
+      var id = a.getAttribute('href').slice(1);
+      var idx = slides.findIndex(function(s){ return s.id === id; });
+      if(idx >= 0){ e.preventDefault(); showSlide(idx); }
+    });
+  });
+
+  // make slides focusable for keyboard scroll
+  slides.forEach(function(s){ s.setAttribute('tabindex','-1'); });
+
+  // reveal-on-scroll (scroll mode)
+  if('IntersectionObserver' in window && !reduce){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){ en.target.classList.add('in'); animateBars(en.target); io.unobserve(en.target); }
+      });
+    }, {threshold:0.12});
+    document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+  } else {
+    document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+    animateBars(document);
+  }
+
+  progress.style.width = scrollProgress() + '%';
+})();
+</script>

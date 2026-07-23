@@ -1,0 +1,15 @@
+{
+  "_description": "Audit log of technical decisions and corrections. Append only.",
+  "author": "[github-user-email]",
+  "_version": "3.0",
+  "_format": {
+    "id": "DEC-{YYYY}-{NNN}",
+    "author": "[github-user-email]",
+    "timestamp": "ISO 8601",
+    "type": "decision | bugfix | config | security | naming | reviewer_correction",
+    "source_agent": "qa",
+    "confidence": "low | medium | high",
+    "session_id": "matches session_log.json"
+  },
+  "decisions": []
+}

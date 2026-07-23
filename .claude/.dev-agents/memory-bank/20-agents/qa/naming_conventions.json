@@ -1,0 +1,113 @@
+{
+  "_description": "Naming conventions detected from the codebase. Built incrementally.",
+  "author": "[github-user-email]",
+  "_version": "3.0",
+  "classes": {
+    "services": {
+      "pattern": "",
+      "examples": null,
+      "location": "",
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "repositories": {
+      "pattern": "",
+      "examples": null,
+      "location": "",
+      "base_class": "",
+      "note": "",
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "controllers": {
+      "pattern": "",
+      "examples": null,
+      "location": "",
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "entities": {
+      "pattern": "",
+      "examples": null,
+      "location": "",
+      "base_class": "",
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "interfaces": {
+      "pattern": "",
+      "examples": null,
+      "location": "",
+      "prefix": "",
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "dtos": {
+      "pattern": "",
+      "examples": null,
+      "location": "",
+      "suffix": "",
+      "note": "",
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "author": "[github-user-email]"
+  },
+  "methods": {
+    "service_methods": {
+      "pattern": "",
+      "examples": null,
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "repository_methods": {
+      "pattern": "",
+      "examples": null,
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "author": "[github-user-email]"
+  },
+  "variables": {
+    "private_fields": {
+      "pattern": "",
+      "examples": null,
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "parameters": {
+      "pattern": "",
+      "examples": null,
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "local_variables": {
+      "pattern": "",
+      "examples": null,
+      "confidence": "low",
+      "author": "[github-user-email]"
+    },
+    "author": "[github-user-email]"
+  },
+  "namespaces": {
+    "pattern": "",
+    "examples": null,
+    "confidence": "low",
+    "author": "[github-user-email]"
+  },
+  "database_naming": {
+    "schema": "",
+    "table_examples": null,
+    "confidence": "low",
+    "author": "[github-user-email]"
+  },
+  "test_naming": {
+    "pattern": "",
+    "examples": null,
+    "test_class_pattern": "",
+    "location": "",
+    "note": "",
+    "confidence": "low",
+    "author": "[github-user-email]"
+  }
+}

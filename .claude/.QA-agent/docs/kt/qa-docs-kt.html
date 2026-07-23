@@ -1,0 +1,523 @@
+<title>QA Docs — Knowledge Transfer</title>
+<meta name="description" content="Knowledge Transfer companion to KT-001: how project SDLC documentation feeds /qa-docs, and how the approved Testing Strategy becomes real automation code.">
+<style>
+  :root{
+    --ink:#0E1620; --ink-soft:#1B2735;
+    --ground:#F4F6F8; --card:#FFFFFF; --card-alt:#EEF2F5;
+    --border:#DCE3EA; --border-strong:#C2CCD6;
+    --muted:#5A6675; --muted-soft:#7C8794;
+    --accent:#0E8A93; --accent-bright:#14B3BE; --accent-ink:#0A565C;
+    --good:#2F9E5E; --good-bg:#E7F4EC;
+    --warn:#B8790A; --warn-bg:#FBF1DD;
+    --crit:#C0392B; --crit-bg:#FAE8E5;
+    --sans:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    --mono:"Cascadia Code","Consolas",ui-monospace,"SFMono-Regular",monospace;
+    --maxw:1080px;
+    --topbar-h:48px;
+    --r:10px;
+    --shadow:0 1px 2px rgba(14,22,32,.04),0 6px 20px rgba(14,22,32,.06);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+    font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+  /* ---------- top bar ---------- */
+  .topbar{position:sticky;top:0;z-index:60;background:rgba(14,22,32,.96);
+    backdrop-filter:saturate(140%) blur(6px);color:#fff;border-bottom:1px solid #243140;}
+  .topbar .inner{max-width:var(--maxw);margin:0 auto;padding:.6rem 1.25rem;
+    display:flex;align-items:center;gap:1rem;justify-content:space-between;min-height:var(--topbar-h)}
+  .brand{font-family:var(--mono);font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent-bright);white-space:nowrap}
+  .brand b{color:#fff;font-weight:600}
+  .topnav{display:flex;gap:.1rem;flex-wrap:wrap;justify-content:flex-end}
+  .topnav a{font-family:var(--mono);font-size:.72rem;color:#9fb0bf;text-decoration:none;
+    padding:.2rem .45rem;border-radius:5px}
+  .topnav a:hover,.topnav a:focus-visible{color:#fff;background:#243140;outline:none}
+  .pres-toggle{font-family:var(--mono);font-size:.72rem;font-weight:600;letter-spacing:.06em;
+    color:#04282b;background:var(--accent-bright);border:none;border-radius:6px;
+    padding:.35rem .7rem;cursor:pointer;white-space:nowrap}
+  .pres-toggle:hover{background:#3ccfd9}
+  .pres-toggle:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  .progress{height:2px;background:var(--accent-bright);width:0;transition:width .12s linear}
+  @media (max-width:860px){.topnav{display:none}}
+
+  /* ---------- layout ---------- */
+  section{max-width:var(--maxw);margin:0 auto;padding:3.6rem 1.5rem 1rem;}
+  .eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent-ink);display:flex;align-items:center;gap:.6rem;margin-bottom:.9rem}
+  .eyebrow .num{color:var(--accent);font-weight:700}
+  .eyebrow .line{flex:1;height:1px;background:var(--border-strong)}
+  h1{font-size:clamp(2.1rem,5vw,3.3rem);line-height:1.05;letter-spacing:-.02em;font-weight:700;
+    text-wrap:balance;margin:.2rem 0}
+  h2{font-size:clamp(1.5rem,3vw,2.05rem);line-height:1.12;letter-spacing:-.015em;font-weight:700;
+    text-wrap:balance;margin:.1rem 0 .8rem}
+  h3{font-size:1.05rem;margin:0 0 .35rem;letter-spacing:-.01em}
+  p{margin:.5rem 0;max-width:70ch}
+  .lead{font-size:1.14rem;color:var(--ink-soft);max-width:66ch}
+  strong{font-weight:650}
+  em{color:var(--accent-ink);font-style:normal;font-weight:600}
+  code{font-family:var(--mono);font-size:.86em;background:var(--card-alt);border:1px solid var(--border);
+    border-radius:5px;padding:.06em .4em;color:var(--accent-ink)}
+
+  /* ---------- hero ---------- */
+  .hero{background:
+      radial-gradient(120% 90% at 88% -10%,#16323a 0%,rgba(22,50,58,0) 55%),
+      linear-gradient(180deg,#0E1620 0%,#10202c 100%);
+    color:#EAF1F4;max-width:none;padding:0;}
+  .hero .wrap{max-width:var(--maxw);margin:0 auto;padding:3.6rem 1.5rem 3rem}
+  .hero h1{color:#fff}
+  .hero .kicker{font-family:var(--mono);font-size:.8rem;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--accent-bright);margin-bottom:1.1rem}
+  .hero .lead{color:#B7C6CF;font-size:1.2rem;margin-top:1rem}
+  .hero .thesis{border-left:3px solid var(--accent-bright);padding-left:1rem;margin:1.6rem 0 0;
+    font-size:1.02rem;color:#D6E2E8;max-width:62ch}
+  .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;
+    margin-top:2.2rem}
+  .stat{background:rgba(255,255,255,.04);border:1px solid #25323f;border-radius:var(--r);
+    padding:1rem 1.1rem}
+  .stat .v{font-family:var(--mono);font-size:1.9rem;font-weight:700;color:#fff;
+    font-variant-numeric:tabular-nums;line-height:1}
+  .stat .l{font-size:.8rem;color:#9fb0bf;margin-top:.45rem;line-height:1.3}
+  .agenda{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:2rem}
+  .chip{font-family:var(--mono);font-size:.72rem;letter-spacing:.04em;color:#cfe0e6;
+    background:rgba(255,255,255,.05);border:1px solid #2a3a49;border-radius:999px;padding:.3rem .7rem}
+
+  /* ---------- cards & grids ---------- */
+  .grid{display:grid;gap:1rem;margin-top:1.4rem}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .g3{grid-template-columns:repeat(auto-fit,minmax(225px,1fr))}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+    padding:1.2rem 1.3rem;box-shadow:var(--shadow)}
+  .card .ic{font-family:var(--mono);font-size:.72rem;color:var(--accent);font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem;display:flex;gap:.5rem;align-items:center}
+  .card .cmd{font-family:var(--mono);font-size:.9rem;color:var(--accent-ink);font-weight:700;
+    background:var(--card-alt);border:1px solid var(--border);border-radius:6px;
+    padding:.2rem .5rem;display:inline-block;margin-bottom:.55rem}
+  .card p{font-size:.94rem;color:var(--muted);margin:.25rem 0 0}
+  .card .ex{font-family:var(--mono);font-size:.78rem;color:var(--accent-ink);margin-top:.7rem;
+    background:#f2f8f8;border:1px dashed var(--border-strong);border-radius:6px;padding:.4rem .55rem;
+    word-break:break-word}
+  .card .ex b{color:var(--muted-soft);font-weight:600}
+
+  /* ---------- concept row ---------- */
+  .concepts{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.4rem}
+  @media (max-width:720px){.concepts{grid-template-columns:1fr}}
+  .concept{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+    padding:1.3rem;box-shadow:var(--shadow);text-align:left}
+  .concept .em{font-size:1.8rem;line-height:1}
+  .concept h3{margin-top:.7rem}
+  .concept .role{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--accent);font-weight:700;margin-top:.2rem}
+  .concept p{font-size:.92rem;color:var(--muted);margin-top:.5rem}
+
+  /* ---------- tables ---------- */
+  .tablewrap{overflow-x:auto;margin-top:1.4rem;border:1px solid var(--border);border-radius:var(--r);
+    box-shadow:var(--shadow)}
+  table{border-collapse:collapse;width:100%;background:var(--card);font-size:.9rem;min-width:560px}
+  th,td{text-align:left;padding:.62rem .85rem;border-bottom:1px solid var(--border);vertical-align:top}
+  thead th{background:var(--ink);color:#dfe7ec;font-size:.72rem;letter-spacing:.07em;
+    text-transform:uppercase;font-weight:600;position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:nth-child(even){background:var(--card-alt)}
+  td.mono,th.mono{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  td .tag-cmd{font-family:var(--mono);color:var(--accent-ink);font-weight:600}
+
+  /* ---------- callout ---------- */
+  .callout{margin-top:1.4rem;background:linear-gradient(180deg,#fff,#f7fafb);
+    border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--r);
+    padding:1.1rem 1.3rem;box-shadow:var(--shadow)}
+  .callout .ck{font-family:var(--mono);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--accent-ink);font-weight:700;margin-bottom:.4rem}
+  .callout p{margin:.2rem 0;font-size:.95rem;color:var(--ink-soft);max-width:76ch}
+  .callout.warn{border-left-color:var(--warn);background:linear-gradient(180deg,#fff,#fffaf0)}
+  .callout.warn .ck{color:#8a5b06}
+
+  /* ---------- flow strip ---------- */
+  .flowwrap{overflow-x:auto;margin-top:1.4rem;padding-bottom:.6rem}
+  .flow{display:flex;align-items:stretch;gap:0;min-width:680px}
+  .node{flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;
+    padding:.75rem .7rem;box-shadow:var(--shadow);position:relative;min-width:96px}
+  .node + .node{margin-left:1.5rem}
+  .node + .node::before{content:"\203A";position:absolute;left:-1.15rem;top:50%;transform:translateY(-50%);
+    color:var(--accent);font-size:1.3rem;font-weight:700;font-family:var(--mono)}
+  .node .nn{font-family:var(--mono);font-size:.68rem;color:var(--accent);font-weight:700;letter-spacing:.04em}
+  .node .nt{font-size:.82rem;font-weight:650;margin:.25rem 0 .3rem;letter-spacing:-.01em}
+  .node .nq{font-size:.74rem;color:var(--muted);line-height:1.35}
+  .node.gate{border-color:var(--accent);background:linear-gradient(180deg,#fff,#eef8f9)}
+  .node .gatepin{display:inline-block;font-family:var(--mono);font-size:.64rem;font-weight:700;
+    color:#022a2d;background:var(--accent-bright);border-radius:4px;padding:.05rem .3rem;margin-top:.35rem}
+
+  /* ---------- gate pills ---------- */
+  .gates{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.3rem}
+  .gate{font-family:var(--mono);font-size:.76rem;font-weight:600;padding:.32rem .55rem;border-radius:6px;
+    background:var(--ink);color:#cfe0e6;border:1px solid #243140}
+  .gate.key{background:var(--accent);color:#022a2d;border-color:var(--accent-bright)}
+
+  /* ---------- phase cards ---------- */
+  .phases{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:1.5rem}
+  @media (max-width:720px){.phases{grid-template-columns:1fr;gap:1rem}}
+  .pcard{position:relative;padding:1.2rem 1.15rem;background:var(--card);border:1px solid var(--border);
+    box-shadow:var(--shadow)}
+  .phases .pcard:first-child{border-radius:var(--r) 0 0 var(--r)}
+  .phases .pcard:last-child{border-radius:0 var(--r) var(--r) 0}
+  @media (max-width:720px){.pcard,.phases .pcard:first-child,.phases .pcard:last-child{border-radius:var(--r)}}
+  .pcard .pk{font-family:var(--mono);font-size:.72rem;color:var(--accent);font-weight:700;letter-spacing:.06em}
+  .pcard .pt{font-size:1.02rem;font-weight:700;margin:.3rem 0}
+  .pcard .pmax{font-family:var(--mono);font-size:.72rem;color:var(--warn);background:var(--warn-bg);
+    display:inline-block;padding:.1rem .4rem;border-radius:5px;margin-bottom:.5rem}
+  .pcard p{font-size:.88rem;color:var(--muted);margin:.3rem 0 0}
+  .pcard .gateline{margin-top:.7rem;font-family:var(--mono);font-size:.72rem;color:var(--accent-ink);font-weight:700}
+
+  /* ---------- two-col ---------- */
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.4rem}
+  @media (max-width:680px){.twocol{grid-template-columns:1fr}}
+  .panel{border-radius:var(--r);padding:1.2rem 1.3rem;border:1px solid var(--border);box-shadow:var(--shadow);background:#fff}
+  .panel h3{font-size:.92rem;text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);color:var(--muted)}
+  .panel.old h3{color:var(--muted)}
+  .panel.new{background:var(--good-bg);border-color:#cfe7d8}
+  .panel.new h3{color:#1d6b3f}
+  .panel ul{margin:.6rem 0 0;padding-left:1.1rem}
+  .panel li{font-size:.92rem;margin:.4rem 0;color:var(--ink-soft)}
+
+  /* ---------- ladder ---------- */
+  .ladder{display:flex;flex-direction:column;gap:.5rem;margin-top:1.5rem}
+  .rung{display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center;
+    background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.9rem 1.1rem;
+    box-shadow:var(--shadow)}
+  .rung .lv{font-family:var(--mono);font-weight:700;font-size:.78rem;color:#fff;border-radius:6px;
+    padding:.4rem .6rem;white-space:nowrap;text-align:center;min-width:74px}
+  .rung .lv small{display:block;font-size:.6rem;font-weight:600;opacity:.85;letter-spacing:.04em}
+  .rung h3{margin:0;font-size:1rem}
+  .rung p{margin:.2rem 0 0;font-size:.88rem;color:var(--muted)}
+  .lv0{background:#7C8794}.lv1{background:#4f9aa0}.lv2{background:var(--accent)}
+  .lv3{background:var(--accent-ink)}.lv4{background:#063b40}
+
+  /* ---------- step list ---------- */
+  .steps{counter-reset:st;display:flex;flex-direction:column;gap:.8rem;margin-top:1.5rem}
+  .step{display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:start;
+    background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.2rem;
+    box-shadow:var(--shadow)}
+  .step::before{counter-increment:st;content:counter(st);font-family:var(--mono);font-weight:700;
+    background:var(--accent);color:#022a2d;width:2rem;height:2rem;border-radius:50%;display:flex;
+    align-items:center;justify-content:center;font-size:.95rem}
+  .step h3{margin:0 0 .15rem;font-size:1rem}
+  .step p{margin:0;font-size:.9rem;color:var(--muted)}
+  .step pre{margin:.5rem 0 0;font-family:var(--mono);font-size:.8rem;background:var(--ink);color:#cfe0e6;
+    border-radius:6px;padding:.5rem .7rem;overflow-x:auto}
+
+  /* ---------- glossary ---------- */
+  .gloss{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem 1.6rem;margin-top:1.4rem}
+  @media (max-width:680px){.gloss{grid-template-columns:1fr}}
+  .gterm{border-bottom:1px solid var(--border);padding-bottom:.6rem}
+  .gterm dt{font-family:var(--mono);font-weight:700;color:var(--accent-ink);font-size:.86rem}
+  .gterm dd{margin:.2rem 0 0;font-size:.86rem;color:var(--muted);line-height:1.45}
+
+  /* ---------- link cards ---------- */
+  .links{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:1.4rem}
+  .linkcard{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+    padding:1.1rem 1.2rem;box-shadow:var(--shadow)}
+  .linkcard .lt{font-family:var(--mono);font-size:.82rem;color:var(--accent-ink);font-weight:700;word-break:break-all}
+  .linkcard p{font-size:.86rem;color:var(--muted);margin:.4rem 0 0}
+
+  /* ---------- footer ---------- */
+  .foot{max-width:var(--maxw);margin:2.5rem auto 0;padding:1.6rem 1.5rem 3rem;color:var(--muted-soft);
+    font-size:.82rem;border-top:1px solid var(--border)}
+
+  /* ---------- reveal ---------- */
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+
+  /* ---------- presentation mode ---------- */
+  .present-controls{display:none}
+  body.present{overflow:hidden}
+  body.present #deck > section{display:none}
+  body.present #deck > section.active-slide{display:block;height:calc(100vh - var(--topbar-h));
+    overflow-y:auto;max-width:none;padding:0}
+  body.present #deck > section.active-slide > .wrap,
+  body.present #deck > section.active-slide > .inner-slide{max-width:var(--maxw);margin:0 auto;
+    padding:2.4rem 1.5rem 4rem;min-height:100%}
+  body.present .reveal{opacity:1;transform:none}
+  body.present .present-controls{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:70;
+    align-items:center;justify-content:center;gap:1rem;padding:.55rem;
+    background:rgba(14,22,32,.94);border-top:1px solid #243140;color:#cfe0e6}
+  .present-controls button{font-family:var(--mono);font-size:.8rem;font-weight:600;cursor:pointer;
+    background:#243140;color:#fff;border:1px solid #34465a;border-radius:6px;padding:.35rem .8rem}
+  .present-controls button:hover{background:#2f4255}
+  .present-controls button:focus-visible{outline:2px solid var(--accent-bright);outline-offset:2px}
+  .present-controls .ctr{font-family:var(--mono);font-size:.82rem;font-variant-numeric:tabular-nums;
+    min-width:70px;text-align:center;color:#9fb0bf}
+  body.present .topnav{display:none}
+
+  @media print{
+    .topbar,.present-controls{display:none}.reveal{opacity:1;transform:none}
+    section{padding:1.2rem 0;break-inside:avoid;max-width:none}
+    .hero{color:#000;background:#fff}.hero h1,.hero .lead,.hero .thesis{color:#000}
+  }
+</style>
+
+<header class="topbar">
+  <div class="inner">
+    <span class="brand">QA&nbsp;DOCS&nbsp;<b>· Knowledge Transfer</b></span>
+    <nav class="topnav" aria-label="Sections">
+      <a href="#sdlc">SDLC → QA</a>
+      <a href="#automation">Strategy → Code</a>
+      <a href="#example">Example &amp; Start</a>
+    </nav>
+    <button class="pres-toggle" id="presToggle" aria-pressed="false">▶ Present</button>
+  </div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<main id="deck">
+
+  <!-- ============ 00 HERO ============ -->
+  <section class="hero" id="hero">
+    <div class="wrap">
+      <div class="kicker">QA Knowledge Transfer · KT-002 · scope: <code style="background:rgba(255,255,255,.06);border-color:#2a3a49;color:#cfe0e6">/qa-docs</code> → automation handoff</div>
+      <h1>Documentation &amp;<br>Testing Strategy.</h1>
+      <p class="lead">KT-001 covered the <code>.claude/</code> automation toolkit and marked the SDLC
+        documentation flow as out of scope. This is that separate KT: how a project's real SDLC
+        documentation feeds <code>/qa-docs</code>, and how the approved Testing Strategy becomes
+        running automation code.</p>
+      <p class="thesis">Everything below is sourced from the real, partial SDLC documentation that
+        exists in this repo today — for project <strong>Contoso</strong>, under <code>project/</code> —
+        and from the real <code>/qa-docs</code> workflow.</p>
+
+      <div class="statgrid">
+        <div class="stat"><div class="v">3</div><div class="l">of 8 phase folders have a doc</div></div>
+        <div class="stat"><div class="v">4</div><div class="l">/qa-docs steps, DISCOVER → SUMMARY</div></div>
+        <div class="stat"><div class="v">6</div><div class="l">human gates in the pipeline</div></div>
+        <div class="stat"><div class="v">3</div><div class="l">lane styles to build into</div></div>
+      </div>
+
+      <div class="agenda">
+        <span class="chip">SDLC → QA</span>
+        <span class="chip">Strategy → Code</span>
+        <span class="chip">Example &amp; Getting Started</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 01 SDLC -> QA ============ -->
+  <section id="sdlc" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">01</span> SDLC → QA <span class="line"></span></div>
+      <h2>What feeds <code>/qa-docs</code>, and what it does with it</h2>
+      <p class="lead">Project <strong>Contoso</strong> has 3 real SDLC documents today — the minimum
+        needed to start the QA process. <code>/qa-docs</code> reads them and runs 4 steps, in order.</p>
+
+      <div class="flowwrap">
+        <div class="flow" style="min-width:680px">
+          <div class="node"><div class="nn">01-UNDERSTAND</div><div class="nt">SI-001</div><div class="nq">Strategic Intake</div></div>
+          <div class="node"><div class="nn">02-DEFINE</div><div class="nt">FRS-001</div><div class="nq">Functional Requirements</div></div>
+          <div class="node"><div class="nn">05-PLANNING</div><div class="nt">BLG-001</div><div class="nq">Backlog</div></div>
+        </div>
+      </div>
+      <div class="flowwrap" style="margin-top:.6rem">
+        <div class="flow" style="min-width:680px">
+          <div class="node"><div class="nn">1</div><div class="nt">DISCOVER</div><div class="nq">inventories the 3 docs above</div></div>
+          <div class="node gate"><div class="nn">2</div><div class="nt">DECISIONS</div><div class="nq">scores strategy options</div><span class="gatepin">APPROVAL GATE</span></div>
+          <div class="node gate"><div class="nn">3</div><div class="nt">GENERATE</div><div class="nq">writes 5 gated documents</div><span class="gatepin">5× CP-*</span></div>
+          <div class="node"><div class="nn">4</div><div class="nt">SUMMARY</div><div class="nq">closes the run</div></div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="ck">There's no single checkpoint</div>
+        <p>DECISIONS stops at one <strong>APPROVAL GATE</strong>. GENERATE then gates each of its
+          5 documents separately: <strong>CP-STRATEGY … CP-REPORT</strong>. 6 real gates
+          total — not one.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 02 STRATEGY -> CODE ============ -->
+  <section id="automation" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">02</span> Part 2 — From Strategy to Code <span class="line"></span></div>
+      <h2>How the approved strategy becomes a running test suite</h2>
+      <p class="lead">Once GENERATE's 5 documents are approved, the automation agents
+        (<code>/qa-orchestrator</code> → <code>/qa-lane</code>) take over.</p>
+
+      <div class="flowwrap">
+        <div class="flow" style="min-width:520px">
+          <div class="node"><div class="nn">IN</div><div class="nt">Approved Strategy</div><div class="nq">qa-config.yaml contract, CP-1</div></div>
+          <div class="node"><div class="nn">IN</div><div class="nt">Work item / AC</div><div class="nq">e.g. FR-AA-001</div></div>
+        </div>
+      </div>
+      <div class="flowwrap" style="margin-top:.6rem">
+        <div class="flow" style="min-width:680px">
+          <div class="node"><div class="nn">BUILDS</div><div class="nt">Framework</div><div class="nq">selected via /qa-setup, CP-1</div></div>
+          <div class="node"><div class="nn">BUILDS</div><div class="nt">POM / fixtures</div><div class="nq">pom-spec &amp; bdd-gherkin only</div></div>
+          <div class="node"><div class="nn">BUILDS</div><div class="nt">Coverage matrix</div><div class="nq">1 test per AC, before code</div></div>
+        </div>
+      </div>
+      <div class="flowwrap" style="margin-top:.6rem">
+        <div class="flow" style="min-width:680px">
+          <div class="node"><div class="nn">RUN</div><div class="nt">run_command</div><div class="nq">executes the suite</div></div>
+          <div class="node gate"><div class="nn">HEAL</div><div class="nt">qa-healer</div><div class="nq">heal report</div><span class="gatepin">CP-4</span></div>
+          <div class="node gate"><div class="nn">REVIEW</div><div class="nt">qa-reviewer</div><div class="nq">3-level verdict</div><span class="gatepin">CP-3</span></div>
+          <div class="node"><div class="nn">DONE</div><div class="nt">WAVE COMPLETE</div><div class="nq">summary + next wave</div></div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="ck">3 lane styles</div>
+        <p><code>pom-spec</code>, <code>bdd-gherkin</code>, <code>api-request</code> — a lane's
+          style, not its name, decides its pipeline.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 03 EXAMPLE + START ============ -->
+  <section id="example" class="reveal">
+    <div class="inner-slide">
+      <div class="eyebrow"><span class="num">03</span> Practical example &amp; getting started <span class="line"></span></div>
+      <h2>One real requirement, start to finish</h2>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Stage</th><th>Source</th><th>Content</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Requirement</strong></td><td class="mono">FR-AA-001</td><td>"The system shall authenticate users via a username and password login form." (Must Have, FRS-001 §3.9)</td></tr>
+            <tr><td><strong>Test case</strong></td><td class="mono">US-001 / AC-001</td><td>Given a registered, active user enters a valid username and correct password, When they submit the login form, Then the system validates the hash, issues a JWT with role claims, and redirects to the dashboard.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="steps" style="margin-top:1.4rem">
+        <div class="step">
+          <div>
+            <h3>Illustrative code (AAA template from <code>spec-authoring-aaa.md</code>)</h3>
+            <p>Nothing has been generated yet for Contoso — this instantiates the toolkit's real
+              spec template with the AC above.</p>
+            <pre>import { test, expect } from '@playwright/test';
+import { LoginPage } from '../../pageObjects/LoginPage';
+test.describe('Authentication', () => {
+  test('TC-001: valid credentials redirect to dashboard', async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await loginPage.login(process.env.USERNAME!, process.env.PASSWORD!);
+    await expect(page).toHaveURL(/\/dashboard/);
+  });
+});</pre>
+          </div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:1.8rem">Checklist to start</h3>
+      <div class="steps">
+        <div class="step"><div><h3>Review the 3 real SDLC docs</h3><p><code>project/01-understand/strategic-intake.md</code>, <code>project/02-define/Functional_Requirements_Specification_V1_0.md</code>, <code>project/05-planning/Backlog.md</code>.</p></div></div>
+        <div class="step"><div><h3>Run <code>/qa-docs</code> → DISCOVER</h3><p>Inventories those 3 artifacts against the intake checklist.</p></div></div>
+        <div class="step"><div><h3>Continue → DECISIONS</h3><p>Approve the scored strategy option at the APPROVAL GATE (<code>qa-decisions.md</code>).</p></div></div>
+        <div class="step"><div><h3>Continue → GENERATE</h3><p>Approve each of the 5 gated documents, CP-STRATEGY through CP-REPORT.</p></div></div>
+        <div class="step"><div><h3>Run <code>/qa-setup</code></h3><p>Turns the approved strategy into <code>docs/qa-config.yaml</code>, approved at CP-1.</p></div></div>
+        <div class="step"><div><h3>Run <code>/qa-orchestrator</code></h3><p>Routes the first real item (e.g. FR-AA-001) into a <code>/qa-lane</code>.</p></div></div>
+      </div>
+    </div>
+    <div class="foot">QA Docs — Knowledge Transfer · KT-002 · scope: <code>/qa-docs</code> SDLC pipeline
+      + Strategy→Code handoff (companion to KT-001, which covers the <code>.claude/</code> automation
+      toolkit) · content sourced from <code>project/</code> (Contoso), the only real project SDLC docs in
+      this repo.</div>
+  </section>
+
+</main>
+
+<div class="present-controls" aria-hidden="false">
+  <button id="prevBtn" aria-label="Previous slide">◀ Prev</button>
+  <span class="ctr" id="counter">1 / 1</span>
+  <button id="nextBtn" aria-label="Next slide">Next ▶</button>
+  <button id="exitBtn" aria-label="Exit presentation mode">Exit</button>
+</div>
+
+<script>
+(function(){
+  var deck = document.getElementById('deck');
+  var slides = Array.prototype.slice.call(deck.querySelectorAll(':scope > section'));
+  var progress = document.getElementById('progress');
+  var counter = document.getElementById('counter');
+  var presToggle = document.getElementById('presToggle');
+  var cur = 0;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  function animateBars(scope){
+    (scope||document).querySelectorAll('.fill[data-w]').forEach(function(f){ f.style.width = f.dataset.w + '%'; });
+  }
+  function isPresent(){ return document.body.classList.contains('present'); }
+
+  function scrollProgress(){
+    var h = document.documentElement;
+    var denom = (h.scrollHeight - h.clientHeight) || 1;
+    return Math.min(100, Math.max(0, h.scrollTop / denom * 100));
+  }
+  window.addEventListener('scroll', function(){ if(!isPresent()) progress.style.width = scrollProgress() + '%'; }, {passive:true});
+
+  function showSlide(i){
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach(function(s, idx){ s.classList.toggle('active-slide', idx === cur); });
+    counter.textContent = (cur + 1) + ' / ' + slides.length;
+    progress.style.width = ((cur + 1) / slides.length * 100) + '%';
+    var active = slides[cur];
+    active.scrollTop = 0;
+    animateBars(active);
+    active.focus({preventScroll:true});
+  }
+  function enterPresent(){
+    document.body.classList.add('present');
+    presToggle.textContent = '✕ Exit';
+    presToggle.setAttribute('aria-pressed','true');
+    showSlide(cur);
+  }
+  function exitPresent(){
+    document.body.classList.remove('present');
+    presToggle.textContent = '▶ Present';
+    presToggle.setAttribute('aria-pressed','false');
+    progress.style.width = scrollProgress() + '%';
+    slides[cur].scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block:'start'});
+  }
+  presToggle.addEventListener('click', function(){ isPresent() ? exitPresent() : enterPresent(); });
+  document.getElementById('prevBtn').addEventListener('click', function(){ showSlide(cur - 1); });
+  document.getElementById('nextBtn').addEventListener('click', function(){ showSlide(cur + 1); });
+  document.getElementById('exitBtn').addEventListener('click', exitPresent);
+
+  document.addEventListener('keydown', function(e){
+    if(!isPresent()) return;
+    if(e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' '){ showSlide(cur + 1); e.preventDefault(); }
+    else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ showSlide(cur - 1); e.preventDefault(); }
+    else if(e.key === 'Escape'){ exitPresent(); }
+    else if(e.key === 'Home'){ showSlide(0); e.preventDefault(); }
+    else if(e.key === 'End'){ showSlide(slides.length - 1); e.preventDefault(); }
+  });
+
+  // nav links jump to slide while presenting
+  document.querySelectorAll('.topnav a').forEach(function(a){
+    a.addEventListener('click', function(e){
+      if(!isPresent()) return;
+      var id = a.getAttribute('href').slice(1);
+      var idx = slides.findIndex(function(s){ return s.id === id; });
+      if(idx >= 0){ e.preventDefault(); showSlide(idx); }
+    });
+  });
+
+  // make slides focusable for keyboard scroll
+  slides.forEach(function(s){ s.setAttribute('tabindex','-1'); });
+
+  // reveal-on-scroll (scroll mode)
+  if('IntersectionObserver' in window && !reduce){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){ en.target.classList.add('in'); animateBars(en.target); io.unobserve(en.target); }
+      });
+    }, {threshold:0.12});
+    document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+  } else {
+    document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+    animateBars(document);
+  }
+
+  progress.style.width = scrollProgress() + '%';
+})();
+</script>

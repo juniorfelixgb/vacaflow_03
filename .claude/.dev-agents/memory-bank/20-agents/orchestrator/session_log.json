@@ -1,0 +1,6 @@
+{
+  "_description": "Session lifecycle log. One entry per session. Append only.",
+  "author": "[github-user-email]",
+  "_version": "2.0",
+  "sessions": []
+}
